@@ -321,8 +321,23 @@ SQL pronto para cada pergunta em [docs/business_questions.md](docs/business_ques
 | [data_quality.md](docs/data_quality.md) | 51 issues mapeadas + tratamentos + premissas DQ |
 | [business_questions.md](docs/business_questions.md) | 5 perguntas do negocio respondidas com SQL |
 | [architecture.md](docs/architecture.md) | Detalhe completo das camadas e fluxo |
-| [slides/case_levva.html](https://wilsonlucas.github.io/case-data-engineer/docs/slides/case_levva.html) | Resumo executivo - 12 slides magazine-quality renderizados via GitHub Pages |
+| [slides/case_levva.html](https://wilsonlucas.github.io/case-data-engineer/docs/slides/case_levva.html) | Resumo executivo - 13 slides magazine-quality renderizados via GitHub Pages |
 | [architecture.html](https://wilsonlucas.github.io/case-data-engineer/docs/architecture.html) | Diagrama interativo das 28 tabelas com info de granularidade |
+
+---
+
+## Evidencias visuais
+
+Capturas do workspace Databricks comprovando pipeline executado, catalogo vivo e reconciliacao. Inventario completo + descricao por imagem em [docs/screenshots/README.md](docs/screenshots/README.md).
+
+| # | Evidencia | Comprova |
+|---|-----------|----------|
+| 1 | [Catalog Explorer overview de fact_entrega](docs/screenshots/01-catalog-explorer-fact-entrega.png) | 5 tags UC + COMMENT em todas as colunas (gates REQ-001/002/003) |
+| 2 | [Lineage UC automatica](docs/screenshots/02-lineage-uc-fact-entrega.png) | Upstream/downstream capturados via Spark plan (sem config manual) |
+| 3 | [Sample Data + Genie](docs/screenshots/03-sample-data-genie.png) | AI/ML nativo do Free Edition + dados reais inspetiveis |
+| 4 | [Pipeline DAG SUCCESS](docs/screenshots/04-pipeline-dag-success.png) | 13 tasks Medallion verdes em 9m46s (gate REQ-NF-001 <30min) |
+| 5 | [Reconciliacao R$ 1.707.675,84](docs/screenshots/05-vw-kpi-result-1707675.png) | Query da BI_RUNBOOK retornando valor exato (gate REQ-NF-002) |
+| 6 | [4 schemas Medallion canonicos](docs/screenshots/06-catalog-schemas-overview.png) | Decisao 10 aplicada (sem prefixo redundante case_levva_*) |
 
 ---
 

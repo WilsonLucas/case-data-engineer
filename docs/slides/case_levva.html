@@ -287,7 +287,45 @@ SELECT array_compact(array(NULL, NULL, 'real'))
 </section>
 
 <section class="slide">
-  <div class="badge">10 / 12 Stack</div>
+  <div class="badge">10 / 13 Evidencias</div>
+  <h2>Evidencias visuais de execucao</h2>
+  <p class="muted">Capturas do workspace Databricks reproduziveis em qualquer Free Edition. Inventario completo em <code>docs/screenshots/</code>.</p>
+  <div class="grid grid-3" style="margin-top: 24px;">
+    <div class="card">
+      <div class="label">Print 1</div>
+      <h3>Catalog Explorer</h3>
+      <p class="small muted"><code>fact_entrega</code> com 5 tags UC fixas + COMMENT em todas colunas. Catalogo vivo aplicado.</p>
+    </div>
+    <div class="card">
+      <div class="label">Print 2</div>
+      <h3>Lineage automatica</h3>
+      <p class="small muted">Upstream e downstream capturados pelo UC via Spark plan, sem configuracao manual.</p>
+    </div>
+    <div class="card">
+      <div class="label">Print 3</div>
+      <h3>Sample Data + Genie</h3>
+      <p class="small muted">AI/ML integrado: perguntas em natural language sobre os dados ja na UI do Free Edition.</p>
+    </div>
+    <div class="card">
+      <div class="label">Print 4</div>
+      <h3>Pipeline DAG SUCCESS</h3>
+      <p class="small muted">13 tasks Medallion verdes em <strong class="good">9m46s</strong>. Gate REQ-NF-001 (&lt;30min) atingido com folga.</p>
+    </div>
+    <div class="card">
+      <div class="label">Print 5</div>
+      <h3>Reconciliacao R$ 1.707.675,84</h3>
+      <p class="small muted">Query da BI_RUNBOOK retornando o valor exato esperado. Gate REQ-NF-002 confirmado.</p>
+    </div>
+    <div class="card">
+      <div class="label">Print 6</div>
+      <h3>Schemas canonicos</h3>
+      <p class="small muted">4 schemas curtos (<code>bronze</code>, <code>gold</code>, <code>landing</code>, <code>silver</code>). Decisao 10 aplicada.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="badge">11 / 13 Stack</div>
   <h2>Stack tecnologico</h2>
   <div class="grid grid-3">
     <div class="card">
@@ -330,7 +368,7 @@ SELECT array_compact(array(NULL, NULL, 'real'))
 </section>
 
 <section class="slide">
-  <div class="badge">11 / 12 Proximos passos</div>
+  <div class="badge">12 / 13 Proximos passos</div>
   <h2>Roadmap em Premium</h2>
   <ul>
     <li><strong>1.</strong> Migracao para Premium (DLT, Workflows agendados, RBAC granular, audit_log).</li>
@@ -347,7 +385,7 @@ SELECT array_compact(array(NULL, NULL, 'real'))
 </section>
 
 <section class="slide hero">
-  <div class="badge">12 / 12 Autor</div>
+  <div class="badge">13 / 13 Autor</div>
   <h1>Obrigado.</h1>
   <p>Qualquer dúvida sigo a disposição.</p>
   <div class="grid grid-2" style="margin-top: 32px;">
