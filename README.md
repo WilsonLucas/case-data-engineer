@@ -32,7 +32,7 @@ A solucao estrutura essas fontes em **arquitetura Medallion (Bronze, Silver, Gol
 
 **Consumidor final:** Analista de BI que usa as tabelas Gold para construir dashboards voltados as liderancas de Operacoes, Comercial e Atendimento.
 
-**Volume processado:** ~1.200 pedidos, ~3.000 itens, ~65 produtos, ~40 vendedores, ~1.700 entregas, ~270 ocorrencias de atendimento.
+**Volume processado:** 403 pedidos, 995 itens, 72 produtos, 40 vendedores (apos dedup), 325 entregas, 270 ocorrencias de atendimento, 180 clientes (apos dedup), 7 canais, 6 regioes canonicas.
 
 **Storage de sources:** Unity Catalog Volume `workspace.case_levva.sources` (substitui o DBFS legado).
 

@@ -10,17 +10,34 @@ Solucao end-to-end de engenharia de dados sobre **Databricks Free Edition com Un
 
 A solucao adota arquitetura **Medallion (Bronze, Silver, Gold)** com **Delta Lake** como formato de armazenamento gerenciado pelo Unity Catalog, **PySpark** para transformacoes e **Spark SQL** para a camada analitica final. Orquestracao via **multi-task job** com DAG explicito de dependencias e paralelismo dos silvers.
 
-### Volumes processados
+### Volumes processados (numeros reais pos-execucao)
 
-- **403** pedidos (cabecalhos)
-- **995** itens de pedido
-- **65** produtos catalogados
-- **40** vendedores (apos dedup de 2 duplicatas reais)
-- **7-8** regioes canonicas (apos dedup de inconsistencias)
-- **269** ocorrencias de atendimento
-- **~1.700** entregas
-- **180** clientes (apos dedup de 3 duplicatas em 183 linhas brutas)
-- **7** canais comerciais (apos dedup de 1 conflito CH05)
+| Entidade | Bronze | Silver | Gold (dim/fact) |
+|---|---|---|---|
+| pedidos_cabecalho | 403 | 403 | 403 (`fact_pedido`) |
+| pedidos_itens | 995 | 995 | 995 (`fact_item`) |
+| produtos | 72 | 72 | 71 (`dim_produto`, 1 filtrado por null) |
+| clientes | 183 | 180 (dedup 3 duplicatas) | 180 (`dim_cliente`) |
+| canais | 8 | 7 (dedup CH05 conflitante) | 7 (`dim_canal`) |
+| vendedores | 42 | 40 (dedup V004/V008) | 40 (`dim_vendedor`) |
+| regioes | 8 | 6 (dedup S/Sul + SE/Sudeste) | 6 (`dim_regiao`) |
+| ocorrencias | 270 | 270 | 270 (`fact_ocorrencia`) |
+| entregas | 322 | 325 | 325 (`fact_entrega`) |
+
+**`dim_data` gerada**: 493 dias cobrindo o range temporal dos fatos.
+**`vw_kpi_business`**: 403 linhas (1 por pedido, granular pedido).
+
+### Reconciliacao Bronze -> Silver -> Gold
+
+`SUM(net_amount) WHERE status IN ('FATURADO', 'EM_SEPARACAO')`:
+
+| Camada | Valor |
+|---|---|
+| Bronze | R$ 1.707.675,84 |
+| Silver | R$ 1.707.675,84 |
+| Gold (`fact_pedido`) | R$ 1.707.675,84 |
+
+Todos batem: zero divergencia ponta a ponta.
 
 ### Storage e namespace
 

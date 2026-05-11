@@ -124,7 +124,8 @@ df_dq = df_dedup.withColumn(
 # COMMAND ----------
 
 df_final = df_dq.select(
-    F.col("id_canal"),
+    # Alinhar com vendedores.canal_id e gold.dim_canal.canal_id (schema heterogeneo: XLSX usa id_canal)
+    F.col("id_canal").alias("canal_id"),
     F.col("nome_canal"),
     F.col("tipo_canal"),
     F.col("ativo_bool").alias("ativo"),

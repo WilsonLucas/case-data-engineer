@@ -186,7 +186,8 @@ df_dq = df_dedup.withColumn(
 # COMMAND ----------
 
 df_final = df_dq.select(
-    F.col("customer_id"),
+    # Alinhar nome com fact_pedido.customer_code (schema heterogeneo: CRM XLSX usa customer_id, ERP CSV usa customer_code)
+    F.col("customer_id").alias("customer_code"),
     F.col("nome_cliente"),
     F.col("segmento"),
     F.col("porte"),
