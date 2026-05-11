@@ -169,3 +169,7 @@ case-data-engineer-levva/
 **Tempo de execucao end-to-end:** ~15-25 minutos em serverless do Free Edition (cold start + fila de concorrencia).
 
 **Repositorio publico:** https://github.com/WilsonLucas/case-data-engineer
+
+**Slides renderizados (resumo executivo visual):** https://wilsonlucas.github.io/case-data-engineer/docs/slides/case_levva.html
+
+**Diagrama interativo de arquitetura:** https://wilsonlucas.github.io/case-data-engineer/docs/architecture.html

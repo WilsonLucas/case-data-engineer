@@ -10,6 +10,10 @@
 
 **Repositorio:** https://github.com/WilsonLucas/case-data-engineer
 
+**Slides do case (renderizados):** https://wilsonlucas.github.io/case-data-engineer/docs/slides/case_levva.html
+
+**Diagrama de arquitetura interativo:** https://wilsonlucas.github.io/case-data-engineer/docs/architecture.html
+
 ---
 
 ## Sumario
@@ -317,6 +321,8 @@ SQL pronto para cada pergunta em [docs/business_questions.md](docs/business_ques
 | [data_quality.md](docs/data_quality.md) | 51 issues mapeadas + tratamentos + premissas DQ |
 | [business_questions.md](docs/business_questions.md) | 5 perguntas do negocio respondidas com SQL |
 | [architecture.md](docs/architecture.md) | Detalhe completo das camadas e fluxo |
+| [slides/case_levva.html](https://wilsonlucas.github.io/case-data-engineer/docs/slides/case_levva.html) | Resumo executivo - 12 slides magazine-quality renderizados via GitHub Pages |
+| [architecture.html](https://wilsonlucas.github.io/case-data-engineer/docs/architecture.html) | Diagrama interativo das 28 tabelas com info de granularidade |
 
 ---
 
