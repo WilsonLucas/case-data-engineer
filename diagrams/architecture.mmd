@@ -1,5 +1,5 @@
 flowchart LR
-    subgraph SRC["📁 Fontes (10 arquivos, multi-formato)"]
+    subgraph SRC["Fontes (9 arquivos multi-formato)"]
         S1[CSV pedidos cabec]
         S2[CSV itens]
         S3[JSON aninhado produtos]
@@ -11,21 +11,22 @@ flowchart LR
         S9[JSON array entregas]
     end
 
-    subgraph BRZ["🟫 Bronze - Raw + Metadata"]
+    subgraph BRZ["Bronze - Raw string-typed + metadata"]
         B[bronze.*<br/>tipos string<br/>+ source_file<br/>+ ingestion_ts]
     end
 
-    subgraph SLV["⚪ Silver - Normalizado e validado"]
-        SL[silver.*<br/>type cast<br/>dedup<br/>parse JSON<br/>DQ flags]
+    subgraph SLV["Silver - Normalizado, deduplicado, com DQ"]
+        SL[silver.*<br/>type cast<br/>dedup<br/>parse JSON<br/>DQ flags + quarantine]
     end
 
-    subgraph GLD["🟡 Gold - Star Schema Analitico"]
+    subgraph GLD["Gold - Star Schema dimensional"]
         D1[(dim_cliente)]
         D2[(dim_produto)]
         D3[(dim_canal)]
         D4[(dim_regiao)]
         D5[(dim_vendedor)]
         D6[(dim_data)]
+        D7[(dim_cliente_history SCD2)]
         F1[fact_pedido]
         F2[fact_item]
         F3[fact_entrega]
@@ -34,7 +35,7 @@ flowchart LR
     end
 
     SRC --> BRZ --> SLV --> GLD
-    GLD --> BI[📊 Analista de BI<br/>Power BI / Tableau]
+    GLD --> BI[Analista de BI<br/>Power BI / Tableau]
 
     style SRC fill:#fff3cd
     style BRZ fill:#d4a373,color:#fff

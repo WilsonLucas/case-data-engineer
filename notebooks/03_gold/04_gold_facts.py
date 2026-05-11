@@ -13,24 +13,24 @@
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `workspace.case_levva_silver.pedidos_cabecalho` | -> `fact_pedido` |
-# MAGIC | `workspace.case_levva_silver.pedidos_itens` | -> `fact_item` |
-# MAGIC | `workspace.case_levva_silver.entregas` | -> `fact_entrega` |
-# MAGIC | `workspace.case_levva_silver.ocorrencias` | -> `fact_ocorrencia` |
-# MAGIC | `workspace.case_levva_gold.dim_*` | Lookups para FKs e validação referencial |
+# MAGIC | `workspace.silver.pedidos_cabecalho` | -> `fact_pedido` |
+# MAGIC | `workspace.silver.pedidos_itens` | -> `fact_item` |
+# MAGIC | `workspace.silver.entregas` | -> `fact_entrega` |
+# MAGIC | `workspace.silver.ocorrencias` | -> `fact_ocorrencia` |
+# MAGIC | `workspace.gold.dim_*` | Lookups para FKs e validação referencial |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
 # MAGIC |------|------------------|-------------|
 # MAGIC | 2026-05-08 | Wilson Lucas | Criação do notebook |
-# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.case_levva_gold` |
+# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.gold` |
 
 # COMMAND ----------
 
 from pyspark.sql import functions as F
 from pyspark.sql.types import *
 
-GOLD_SCHEMA = "workspace.case_levva_gold"
+GOLD_SCHEMA = "workspace.gold"
 
 # COMMAND ----------
 
@@ -39,7 +39,7 @@ GOLD_SCHEMA = "workspace.case_levva_gold"
 
 # COMMAND ----------
 
-df_silver_pedidos = spark.table("workspace.case_levva_silver.pedidos_cabecalho")
+df_silver_pedidos = spark.table("workspace.silver.pedidos_cabecalho")
 
 df_fact_pedido = df_silver_pedidos.select(
     F.col("order_id"),
@@ -70,7 +70,7 @@ print(f"[OK] {GOLD_SCHEMA}.fact_pedido: {spark.table(f'{GOLD_SCHEMA}.fact_pedido
 
 # COMMAND ----------
 
-df_silver_itens = spark.table("workspace.case_levva_silver.pedidos_itens")
+df_silver_itens = spark.table("workspace.silver.pedidos_itens")
 
 df_fact_item = df_silver_itens.select(
     F.col("order_id"),
@@ -99,7 +99,7 @@ print(f"[OK] {GOLD_SCHEMA}.fact_item: {spark.table(f'{GOLD_SCHEMA}.fact_item').c
 
 # COMMAND ----------
 
-df_silver_entregas = spark.table("workspace.case_levva_silver.entregas")
+df_silver_entregas = spark.table("workspace.silver.entregas")
 
 df_fact_entrega = df_silver_entregas.select(
     F.col("delivery_id"),
@@ -132,7 +132,7 @@ print(f"[OK] {GOLD_SCHEMA}.fact_entrega: {spark.table(f'{GOLD_SCHEMA}.fact_entre
 
 # COMMAND ----------
 
-df_silver_ocorr = spark.table("workspace.case_levva_silver.ocorrencias")
+df_silver_ocorr = spark.table("workspace.silver.ocorrencias")
 
 df_fact_ocorr = df_silver_ocorr.select(
     F.col("ticket_id"),
@@ -160,7 +160,7 @@ print(f"[OK] {GOLD_SCHEMA}.fact_ocorrencia: {spark.table(f'{GOLD_SCHEMA}.fact_oc
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SHOW TABLES IN workspace.case_levva_gold;
+# MAGIC SHOW TABLES IN workspace.gold;
 
 # COMMAND ----------
 

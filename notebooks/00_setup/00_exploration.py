@@ -7,20 +7,20 @@
 # MAGIC %md
 # MAGIC # Notebook: 00_exploration
 # MAGIC ## Objetivo:
-# MAGIC Profiling read-only das 9 fontes brutas disponibilizadas no Volume `workspace.case_levva.sources`. Para cada fonte: schema inferido, contagem de linhas, amostra, distribuição de nulls e valores distintos em colunas de baixa cardinalidade. **Não escreve nenhuma tabela.**
+# MAGIC Profiling read-only das 9 fontes brutas disponibilizadas no Volume `workspace.landing.sources`. Para cada fonte: schema inferido, contagem de linhas, amostra, distribuição de nulls e valores distintos em colunas de baixa cardinalidade. **Não escreve nenhuma tabela.**
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `/Volumes/workspace/case_levva/sources/erp_pedidos_cabecalho_2025.csv` | CSV `;` com cabeçalho dos pedidos (~403 linhas) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/erp_pedidos_itens_2025.csv` | CSV `,` com itens dos pedidos (~995 linhas) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/vendedores.csv` | CSV `;` com cadastro de vendedores (~42 linhas) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/legado_regioes_pipe.txt` | Texto delimitado por `\|` com regiões (~9 linhas) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/cadastro_produtos_api_dump.json` | JSON aninhado com produtos (~65) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/logistica_entregas.json` | JSON array aninhado com entregas (~1700) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/atendimento_ocorrencias.ndjson` | NDJSON com tickets de ocorrência (~269) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/crm_clientes_export.xlsx` | XLSX com clientes (~183) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/comercial_canais.xlsx` | XLSX com canais comerciais (sheet `canais`, ~8) |
+# MAGIC | `/Volumes/workspace/landing/sources/erp_pedidos_cabecalho_2025.csv` | CSV `;` com cabeçalho dos pedidos (~403 linhas) |
+# MAGIC | `/Volumes/workspace/landing/sources/erp_pedidos_itens_2025.csv` | CSV `,` com itens dos pedidos (~995 linhas) |
+# MAGIC | `/Volumes/workspace/landing/sources/vendedores.csv` | CSV `;` com cadastro de vendedores (~42 linhas) |
+# MAGIC | `/Volumes/workspace/landing/sources/legado_regioes_pipe.txt` | Texto delimitado por `\|` com regiões (~9 linhas) |
+# MAGIC | `/Volumes/workspace/landing/sources/cadastro_produtos_api_dump.json` | JSON aninhado com produtos (~65) |
+# MAGIC | `/Volumes/workspace/landing/sources/logistica_entregas.json` | JSON array aninhado com entregas (~1700) |
+# MAGIC | `/Volumes/workspace/landing/sources/atendimento_ocorrencias.ndjson` | NDJSON com tickets de ocorrência (~269) |
+# MAGIC | `/Volumes/workspace/landing/sources/crm_clientes_export.xlsx` | XLSX com clientes (~183) |
+# MAGIC | `/Volumes/workspace/landing/sources/comercial_canais.xlsx` | XLSX com canais comerciais (sheet `canais`, ~8) |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
@@ -34,7 +34,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import *
 import pandas as pd
 
-SOURCES_BASE = "/Volumes/workspace/case_levva/sources"
+SOURCES_BASE = "/Volumes/workspace/landing/sources"
 
 SOURCES = {
     "erp_pedidos_cabecalho_2025.csv": {"format": "csv", "sep": ";", "encoding": "UTF-8"},
@@ -205,7 +205,7 @@ df_ocorrencias.groupBy("status").count().orderBy(F.desc("count")).show(truncate=
 
 # COMMAND ----------
 
-local_path_clientes = "/Volumes/workspace/case_levva/sources/crm_clientes_export.xlsx"
+local_path_clientes = "/Volumes/workspace/landing/sources/crm_clientes_export.xlsx"
 df_clientes_pd = pd.read_excel(local_path_clientes)
 print(f"[INFO] crm_clientes_export.xlsx - shape: {df_clientes_pd.shape}")
 print(f"\n[INFO] Colunas: {list(df_clientes_pd.columns)}")
@@ -221,7 +221,7 @@ profile_dataframe(df_clientes, "crm_clientes_export.xlsx (Spark DF)")
 
 # COMMAND ----------
 
-local_path_canais = "/Volumes/workspace/case_levva/sources/comercial_canais.xlsx"
+local_path_canais = "/Volumes/workspace/landing/sources/comercial_canais.xlsx"
 df_canais_pd = pd.read_excel(local_path_canais, sheet_name="canais")
 print(f"[INFO] comercial_canais.xlsx - shape: {df_canais_pd.shape}")
 print(f"\n[INFO] Colunas: {list(df_canais_pd.columns)}")

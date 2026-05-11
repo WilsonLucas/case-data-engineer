@@ -1,20 +1,20 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Tabela: workspace.case_levva_silver.clientes
+# MAGIC # Tabela: workspace.silver.clientes
 # MAGIC ## Objetivo:
 # MAGIC Normalizar o cadastro de clientes a partir do bronze. Trata as 11 issues mapeadas em `00_exploration` no XLSX original (183 linhas, sheet `Sheet1`): dedup por `customer_id` (3 duplicatas), parse de `data_cadastro` em 3 formatos misturados, mapeamento exaustivo de `estado` (UF + nome + typo) para UF code de 2 letras, validação de `email` via regex, e padronização de enums (`porte`, `segmento`, `status_cliente`). Saída pronta para servir como `dim_cliente` no gold.
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `workspace.case_levva_bronze.clientes` | Cadastro bruto de clientes (183 linhas, ingestado de `crm_clientes_export.xlsx` via pandas) |
+# MAGIC | `workspace.bronze.clientes` | Cadastro bruto de clientes (183 linhas, ingestado de `crm_clientes_export.xlsx` via pandas) |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
 # MAGIC |------|------------------|-------------|
 # MAGIC | 2026-05-08 | Wilson Lucas | Criação do notebook (esqueleto) |
 # MAGIC | 2026-05-10 | Wilson Lucas | Schema real capturado: UF_MAP exaustivo (18 variantes), parse de 3 formatos de data, validação email, dedup por `updated_at` |
-# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.case_levva_silver`; troca de `F.to_date` por `F.expr("try_to_date(...)")` para ANSI mode |
+# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.silver`; troca de `F.to_date` por `F.expr("try_to_date(...)")` para ANSI mode |
 
 # COMMAND ----------
 
@@ -22,12 +22,12 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
 
-SILVER_SCHEMA = "workspace.case_levva_silver"
+SILVER_SCHEMA = "workspace.silver"
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SILVER_SCHEMA}")
 
 # COMMAND ----------
 
-df_bronze = spark.table("workspace.case_levva_bronze.clientes")
+df_bronze = spark.table("workspace.bronze.clientes")
 print(f"[BRONZE] Linhas: {df_bronze.count()} | Colunas: {df_bronze.columns}")
 df_bronze.show(5, truncate=False)
 

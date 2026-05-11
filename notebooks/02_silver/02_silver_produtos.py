@@ -1,13 +1,13 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Tabela: workspace.case_levva_silver.produtos
+# MAGIC # Tabela: workspace.silver.produtos
 # MAGIC ## Objetivo:
 # MAGIC Normalizar cadastro de produtos a partir do bronze. Aplana 3 structs serializados como JSON string (`product`, `pricing`, `attributes`) em colunas tabulares, padroniza `status` para boolean `is_active`, parseia `list_price` com decimal BR, e valida `currency`. Saída pronta para servir como `dim_produto` no gold.
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `workspace.case_levva_bronze.produtos` | Catálogo bruto (~65 linhas, ingestado de `cadastro_produtos_api_dump.json` com structs aninhados serializados) |
+# MAGIC | `workspace.bronze.produtos` | Catálogo bruto (~65 linhas, ingestado de `cadastro_produtos_api_dump.json` com structs aninhados serializados) |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
@@ -20,7 +20,7 @@
 from pyspark.sql import functions as F
 from pyspark.sql.types import *
 
-SILVER_SCHEMA = "workspace.case_levva_silver"
+SILVER_SCHEMA = "workspace.silver"
 
 # COMMAND ----------
 
@@ -52,7 +52,7 @@ schema_attributes = StructType(
 # COMMAND ----------
 
 # Leitura do Bronze
-df_bronze = spark.table("workspace.case_levva_bronze.produtos")
+df_bronze = spark.table("workspace.bronze.produtos")
 print(f"[BRONZE] Linhas lidas: {df_bronze.count()}")
 
 # COMMAND ----------
@@ -113,7 +113,7 @@ df_normalized = (
 # 3. DQ flags
 df_with_dq = df_normalized.withColumn(
     "_dq_reasons",
-    F.array_remove(
+    F.array_compact(
         F.array(
             F.when(F.col("is_active").isNull(), F.lit("status não reconhecido")).otherwise(F.lit(None)),
             F.when(F.col("list_price").isNull(), F.lit("list_price não pôde ser convertido")).otherwise(F.lit(None)),
@@ -121,8 +121,7 @@ df_with_dq = df_normalized.withColumn(
                 F.col("currency") != "BRL", F.lit(F.concat(F.lit("currency != BRL: "), F.col("currency")))
             ).otherwise(F.lit(None)),
             F.when(F.col("updated_at").isNull(), F.lit("updated_at inválido")).otherwise(F.lit(None)),
-        ),
-        None,
+        )
     ),
 ).withColumn("_dq_status", F.when(F.size("_dq_reasons") == 0, F.lit("clean")).otherwise(F.lit("warning")))
 
@@ -154,7 +153,7 @@ df_final = df_with_dq.select(
 )
 
 print(
-    f"\n[OK] workspace.case_levva_silver.produtos gravada. Total: {spark.table(f'{SILVER_SCHEMA}.produtos').count()} linhas."
+    f"\n[OK] workspace.silver.produtos gravada. Total: {spark.table(f'{SILVER_SCHEMA}.produtos').count()} linhas."
 )
 spark.table(f"{SILVER_SCHEMA}.produtos").groupBy("_dq_status").count().show()
 spark.table(f"{SILVER_SCHEMA}.produtos").show(5, truncate=False)

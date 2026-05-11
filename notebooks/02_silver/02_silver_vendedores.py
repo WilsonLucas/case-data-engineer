@@ -1,14 +1,14 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Tabela: workspace.case_levva_silver.vendedores
+# MAGIC # Tabela: workspace.silver.vendedores
 # MAGIC ## Objetivo:
 # MAGIC Normalizar cadastro de vendedores a partir do bronze. Resolve duplicatas reais (V004 e V008 aparecem 2x, prioriza `status='ATIVO'` + `hire_date` mais recente), padroniza `status` e `canal_id` com defaults, parseia `hire_date` em 3 formatos, e cruza `regional_code` contra `silver.regioes` para garantir referência válida. Saída pronta para servir como `dim_vendedor` no gold.
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `workspace.case_levva_bronze.vendedores` | Cadastro bruto (~42 linhas com 2 duplicatas conhecidas, ingestado de `vendedores.csv` com `;`) |
-# MAGIC | `workspace.case_levva_silver.regioes` | Lookup canônico de `regional_code` para resolver inconsistências |
+# MAGIC | `workspace.bronze.vendedores` | Cadastro bruto (~42 linhas com 2 duplicatas conhecidas, ingestado de `vendedores.csv` com `;`) |
+# MAGIC | `workspace.silver.regioes` | Lookup canônico de `regional_code` para resolver inconsistências |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
@@ -22,7 +22,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
 
-SILVER_SCHEMA = "workspace.case_levva_silver"
+SILVER_SCHEMA = "workspace.silver"
 
 # COMMAND ----------
 
@@ -40,7 +40,7 @@ def parse_multi_format_date(col_name):
 # COMMAND ----------
 
 # Leitura do Bronze
-df_bronze = spark.table("workspace.case_levva_bronze.vendedores")
+df_bronze = spark.table("workspace.bronze.vendedores")
 print(f"[BRONZE] Linhas lidas: {df_bronze.count()}")
 
 # Detectar duplicatas antes do tratamento
@@ -70,11 +70,11 @@ df_normalized = df_normalized.withColumn(
     ),
 )
 
-# 3. Padronizar regional_code via lookup contra workspace.case_levva_silver.regioes
+# 3. Padronizar regional_code via lookup contra workspace.silver.regioes
 silver_regioes_codes = {
     r.regional_code for r in spark.table(f"{SILVER_SCHEMA}.regioes").select("regional_code").collect()
 }
-print(f"[INFO] Regional codes válidos em workspace.case_levva_silver.regioes: {silver_regioes_codes}")
+print(f"[INFO] Regional codes válidos em workspace.silver.regioes: {silver_regioes_codes}")
 
 # Mapeamento manual para variações conhecidas
 df_normalized = df_normalized.withColumn(
@@ -106,7 +106,7 @@ print(f"[DEDUP] Linhas antes: {df_normalized.count()} -> depois: {df_deduped.cou
 # 5. DQ flags
 df_with_dq = df_deduped.withColumn(
     "_dq_reasons",
-    F.array_remove(
+    F.array_compact(
         F.array(
             F.when(F.col("hire_date").isNull(), F.lit("hire_date inválida")).otherwise(F.lit(None)),
             F.when(F.col("canal_id") == "NAO_INFORMADO", F.lit("canal_id ausente")).otherwise(F.lit(None)),
@@ -114,8 +114,7 @@ df_with_dq = df_deduped.withColumn(
             F.when(
                 ~F.col("regional_code").isin(["S", "SE", "N", "NE", "CO", "XX"]), F.lit("regional_code não reconhecido")
             ).otherwise(F.lit(None)),
-        ),
-        None,
+        )
     ),
 ).withColumn("_dq_status", F.when(F.size("_dq_reasons") == 0, F.lit("clean")).otherwise(F.lit("warning")))
 
@@ -143,7 +142,7 @@ df_final = df_with_dq.select(
 )
 
 print(
-    f"\n[OK] workspace.case_levva_silver.vendedores gravada. Total: {spark.table(f'{SILVER_SCHEMA}.vendedores').count()} linhas."
+    f"\n[OK] workspace.silver.vendedores gravada. Total: {spark.table(f'{SILVER_SCHEMA}.vendedores').count()} linhas."
 )
 
 # Resumo DQ

@@ -1,20 +1,20 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Tabela: workspace.case_levva_silver.canais
+# MAGIC # Tabela: workspace.silver.canais
 # MAGIC ## Objetivo:
 # MAGIC Normalizar o cadastro de canais comerciais a partir do bronze, resolvendo issues estruturais detectadas em `00_exploration`: caps mista em `id_canal`/`tipo_canal`/`ativo`, duplicata conflitante CH05 (`E-commerce` vs `ecommerce`), nulls em `nome_canal` (CH06) e `ativo` (CH07). Saída pronta para servir como `dim_canal` no gold.
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `workspace.case_levva_bronze.canais` | Cadastro bruto de canais (8 linhas, 5 colunas, ingestado de `comercial_canais.xlsx` sheet `canais`) |
+# MAGIC | `workspace.bronze.canais` | Cadastro bruto de canais (8 linhas, 5 colunas, ingestado de `comercial_canais.xlsx` sheet `canais`) |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
 # MAGIC |------|------------------|-------------|
 # MAGIC | 2026-05-08 | Wilson Lucas | Criação do notebook (esqueleto) |
 # MAGIC | 2026-05-10 | Wilson Lucas | Schema real capturado: dedup CH05 conflitante, normalização case + boolean ativo, DQ flags por categoria |
-# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.case_levva_silver` |
+# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.silver` |
 
 # COMMAND ----------
 
@@ -22,12 +22,12 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
 
-SILVER_SCHEMA = "workspace.case_levva_silver"
+SILVER_SCHEMA = "workspace.silver"
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SILVER_SCHEMA}")
 
 # COMMAND ----------
 
-df_bronze = spark.table("workspace.case_levva_bronze.canais")
+df_bronze = spark.table("workspace.bronze.canais")
 print(f"[BRONZE] Linhas: {df_bronze.count()} | Colunas: {df_bronze.columns}")
 df_bronze.show(20, truncate=False)
 

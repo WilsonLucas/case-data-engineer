@@ -1,12 +1,14 @@
 # Case Tecnico - Engenheiro de Dados
 
-> Solucao end-to-end de engenharia de dados sobre Databricks Free Edition com Unity Catalog: ingestao multi-formato, tratamento de qualidade, modelagem dimensional analitica para consumo por BI.
+> Solucao end-to-end de engenharia de dados sobre Databricks Free Edition com Unity Catalog: ingestao multi-formato, tratamento de qualidade nao-destrutivo, modelagem dimensional analitica para consumo por BI, governanca UC viva (COMMENT/TAG/CONSTRAINT) e suite de testes.
 
 [![Databricks](https://img.shields.io/badge/Databricks-Free%20Edition-FF3621?logo=databricks)](https://www.databricks.com/learn/free-edition)
 [![Unity Catalog](https://img.shields.io/badge/Unity%20Catalog-enabled-0080FF)](https://docs.databricks.com/en/data-governance/unity-catalog/index.html)
 [![Delta Lake](https://img.shields.io/badge/Delta%20Lake-3.x-00ADD8?logo=delta)](https://delta.io)
 [![PySpark](https://img.shields.io/badge/PySpark-3.5%2B-E25A1C?logo=apachespark)](https://spark.apache.org)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python)](https://www.python.org)
+
+**Repositorio:** https://github.com/WilsonLucas/case-data-engineer
 
 ---
 
@@ -18,9 +20,11 @@
 - [Como reproduzir](#como-reproduzir)
 - [Modelo analitico final](#modelo-analitico-final)
 - [Perguntas de negocio respondidas](#perguntas-de-negocio-respondidas)
-- [Decisoes tecnicas](#decisoes-tecnicas)
+- [Decisoes tecnicas (ADRs)](#decisoes-tecnicas-adrs)
+- [Documentacao adicional](#documentacao-adicional)
 - [Limitacoes conhecidas](#limitacoes-conhecidas)
 - [Proximos passos](#proximos-passos)
+- [Autor](#autor)
 
 ---
 
@@ -30,16 +34,17 @@ O case simula uma empresa de servicos com operacao nacional cujos dados estao di
 
 A solucao estrutura essas fontes em **arquitetura Medallion (Bronze, Silver, Gold)** sobre Databricks Free Edition com Unity Catalog e Delta Lake, entregando um modelo dimensional pronto para o consumo de um Analista de BI.
 
-**Consumidor final:** Analista de BI que usa as tabelas Gold para construir dashboards voltados as liderancas de Operacoes, Comercial e Atendimento.
+**Consumidor final:** Analista de BI que usa as tabelas Gold para construir dashboards voltados as liderancas de Operacoes, Comercial e Atendimento. Comecar em [docs/BI_RUNBOOK.md](docs/BI_RUNBOOK.md).
 
 **Volume processado:** 403 pedidos, 995 itens, 72 produtos, 40 vendedores (apos dedup), 325 entregas, 270 ocorrencias de atendimento, 180 clientes (apos dedup), 7 canais, 6 regioes canonicas.
 
-**Storage de sources:** Unity Catalog Volume `workspace.case_levva.sources` (substitui o DBFS legado).
+**Reconciliacao end-to-end:** `SUM(net_amount) WHERE status_canonico IN ('FATURADO','EM_SEPARACAO')` = **R$ 1.707.675,84** mantido em Bronze, Silver e Gold (validado em [99_validation.py](notebooks/00_setup/99_validation.py)).
 
-**Schemas de saida:**
-- `workspace.case_levva_bronze` - dados brutos com metadata tecnica
-- `workspace.case_levva_silver` - normalizado por entidade
-- `workspace.case_levva_gold` - star schema analitico
+**Schemas Unity Catalog:**
+- `workspace.landing` - Volume `sources` com arquivos brutos
+- `workspace.bronze` - 9 tabelas Delta string-typed (preservam formato original)
+- `workspace.silver` - 9 tabelas tipadas com DQ flags + quarantine
+- `workspace.gold` - star schema com 6 dims SCD1 + 1 SCD2 + 4 facts + 1 view consolidada
 
 ---
 
@@ -47,33 +52,34 @@ A solucao estrutura essas fontes em **arquitetura Medallion (Bronze, Silver, Gol
 
 ```mermaid
 flowchart LR
-    subgraph SRC["UC Volume: workspace.case_levva.sources"]
-        S1[CSV ; pedidos cabecalho]
-        S2[CSV , itens]
+    subgraph SRC["UC Volume: workspace.landing.sources"]
+        S1[CSV pedidos cabec]
+        S2[CSV itens]
         S3[JSON aninhado produtos]
         S4[XLSX clientes]
         S5[XLSX canais]
-        S6[CSV ; vendedores]
+        S6[CSV vendedores]
         S7[Pipe TXT regioes]
         S8[NDJSON ocorrencias]
         S9[JSON array entregas]
     end
 
-    subgraph BRZ["Bronze - workspace.case_levva_bronze"]
+    subgraph BRZ["Bronze - workspace.bronze"]
         B[Tipos string<br/>+ _source_file<br/>+ _ingestion_timestamp<br/>+ _record_id]
     end
 
-    subgraph SLV["Silver - workspace.case_levva_silver"]
-        SL[Type cast resiliente<br/>Dedup determinista<br/>Parse JSON aninhado<br/>DQ flags por registro]
+    subgraph SLV["Silver - workspace.silver"]
+        SL[Type cast resiliente ANSI-safe<br/>Dedup determinista<br/>Parse JSON aninhado<br/>DQ flags + quarantine]
     end
 
-    subgraph GLD["Gold - workspace.case_levva_gold"]
+    subgraph GLD["Gold - workspace.gold"]
         D1[(dim_cliente)]
-        D2[(dim_produto)]
-        D3[(dim_canal)]
-        D4[(dim_regiao)]
-        D5[(dim_vendedor)]
-        D6[(dim_data)]
+        D2[(dim_cliente_history SCD2)]
+        D3[(dim_produto)]
+        D4[(dim_canal)]
+        D5[(dim_regiao)]
+        D6[(dim_vendedor)]
+        D7[(dim_data enriquecida)]
         F1[fact_pedido]
         F2[fact_item]
         F3[fact_entrega]
@@ -82,63 +88,86 @@ flowchart LR
     end
 
     SRC --> BRZ --> SLV --> GLD
-    GLD --> BI[Analista de BI<br/>Power BI / Tableau]
+    GLD --> BI[Analista de BI<br/>Power BI / Tableau / Notebook]
 ```
 
-### Por que Medallion
+### Por que Medallion (ADR-003)
 
 A arquitetura em camadas separa responsabilidades:
 
 | Camada | Responsabilidade | O que NAO faz |
 |---|---|---|
-| **Bronze** | Persistir o dado bruto exatamente como veio, com rastreabilidade | Nao trata, nao infere tipos, nao valida |
-| **Silver** | Normalizar tipos, tratar qualidade, deduplicar, padronizar enums | Nao agrega, nao calcula metricas de negocio |
-| **Gold** | Modelar dimensionalmente para consumo, calcular metricas | Nao armazena dado bruto |
+| **Bronze** | Persistir o dado bruto exatamente como veio, com rastreabilidade | Nao trata, nao infere tipos, nao valida ([ADR-001](docs/adr/ADR-001-bronze-as-string.md)) |
+| **Silver** | Normalizar tipos, tratar qualidade, deduplicar, padronizar enums; isolar registros invalidos em quarantine | Nao agrega, nao calcula metricas de negocio ([ADR-005](docs/adr/ADR-005-dq-flags-vs-dlq.md)) |
+| **Gold** | Modelar dimensionalmente para consumo, calcular metricas, aplicar CHECK constraints | Nao armazena dado bruto |
 
 Beneficios praticos:
 
-1. **Reprocessamento isolado**: se uma regra de negocio mudar, recalculo so Silver+Gold; Bronze fica intocado.
-2. **Auditoria**: qualquer numero no Gold tem rastreio ate o arquivo original.
-3. **Idempotencia**: todos os notebooks rodam de novo sem corromper estado.
-4. **Time-travel**: Delta Lake mantem historico, permite ver qualquer estado anterior.
+1. **Reprocessamento isolado** - se uma regra de negocio mudar, recalculo so Silver+Gold; Bronze fica intocado.
+2. **Auditoria** - qualquer numero no Gold tem rastreio ate o arquivo original via `_source_file`.
+3. **Idempotencia** - todos os notebooks rodam de novo sem corromper estado (`mode("overwrite") + overwriteSchema=true`).
+4. **Time-travel Delta** - retencao de 30 dias de log permite query de qualquer versao via `VERSION AS OF N`.
+
+### Governanca Unity Catalog (catalogo vivo)
+
+Aplicada via [01_apply_governance.py](notebooks/00_setup/01_apply_governance.py) idempotente cobrindo as 28 tabelas:
+
+- **COMMENT ON TABLE** em todas as tabelas (descricao + granularidade)
+- **COMMENT ON COLUMN** em 100% das colunas business das tabelas Gold
+- **5 TAGS fixas** (`owner`, `layer`, `classification`, `pii`, `data_domain`) - vocabulario controlado em [NAMING_CONVENTIONS.md](docs/NAMING_CONVENTIONS.md)
+- **TBLPROPERTIES** Delta retention (`logRetentionDuration=30 days`, `deletedFileRetentionDuration=7 days`)
+- **CHECK constraint** em `fact_pedido` (`net_amount >= 0`) com pattern `DROP IF EXISTS` antes de `ADD` para idempotencia
 
 ---
 
 ## Estrutura do repositorio
 
 ```
-case-data-engineer-levva/
-|-- README.md                          # Este arquivo
-|-- EXECUTIVE_SUMMARY.md               # Resumo executivo (1-2 paginas)
+case-data-engineer/
+|-- README.md                           # Este arquivo
+|-- EXECUTIVE_SUMMARY.md                # Resumo executivo (1-2 paginas)
+|-- pipeline_dag.json                   # Multi-task job Databricks (13 tasks)
+|-- pyproject.toml                      # black, ruff, pytest, chispa
+|-- diagrams/
+|   `-- architecture.mmd                # Fonte Mermaid do diagrama
 |-- docs/
-|   |-- architecture.md                # Detalhe das camadas e fluxo
-|   |-- data_quality.md                # Problemas encontrados + tratamentos
-|   |-- data_model.md                  # Granularidade, relacionamentos, premissas
-|   `-- business_questions.md          # Perguntas do negocio respondidas com SQL
+|   |-- architecture.md                 # Detalhe das camadas e fluxo
+|   |-- data_model.md                   # Bus matrix + SCD type por dim + ER + premissas
+|   |-- data_quality.md                 # 51 issues mapeadas + tratamentos
+|   |-- business_questions.md           # 5 perguntas do negocio com SQL
+|   |-- TABLES.md                       # Data dictionary das 28 tabelas
+|   |-- GLOSSARY.md                     # Glossario de negocio (28 termos)
+|   |-- NAMING_CONVENTIONS.md           # Convencoes de schemas, tabelas, colunas, tags
+|   |-- BI_RUNBOOK.md                   # Guia rapido para Analista BI consumir
+|   `-- adr/
+|       |-- ADR-001-bronze-as-string.md
+|       |-- ADR-002-scd1-vs-scd2.md
+|       |-- ADR-003-medallion-3-layer.md
+|       |-- ADR-004-free-edition-vs-premium.md
+|       `-- ADR-005-dq-flags-vs-dlq.md
 |-- notebooks/
 |   |-- 00_setup/
-|   |   |-- 00_exploration.py          # Profiling read-only dos sources
-|   |   `-- 99_validation.py           # Smoke tests + reconciliacao end-to-end
+|   |   |-- 00_exploration.py           # Profiling read-only dos sources
+|   |   |-- 00_rename_schemas.py        # Migracao one-shot landing/bronze/silver/gold
+|   |   |-- 01_apply_governance.py      # Governanca UC (COMMENT/TAG/CONSTRAINT)
+|   |   `-- 99_validation.py            # Smoke tests + reconciliacao + time travel demo
 |   |-- 01_bronze/
-|   |   `-- 01_bronze_ingest.py        # Ingestao multi-formato -> Delta Bronze
-|   |-- 02_silver/
-|   |   |-- 02_silver_pedidos.py       # Cabecalho + itens (2 tabelas)
-|   |   |-- 02_silver_produtos.py
-|   |   |-- 02_silver_clientes.py
-|   |   |-- 02_silver_canais.py
-|   |   |-- 02_silver_regioes.py
-|   |   |-- 02_silver_vendedores.py
-|   |   |-- 02_silver_entregas.py
-|   |   `-- 02_silver_ocorrencias.py
-|   `-- 03_gold/
-|       |-- 03_gold_dimensions.py      # 6 dimensoes
-|       |-- 04_gold_facts.py           # 4 fatos
-|       `-- 05_gold_kpis.py            # View consolidada vw_kpi_business
-`-- diagrams/
-    `-- architecture.mmd               # Fonte Mermaid do diagrama
+|   |   `-- 01_bronze_ingest.py         # Ingestao multi-formato -> Delta Bronze
+|   |-- 02_silver/                      # 8 notebooks (1 por entidade)
+|   |-- 03_gold/
+|   |   |-- 03_gold_dimensions.py       # 6 dims SCD1 + 1 SCD2 + dim_data enriquecida
+|   |   |-- 04_gold_facts.py            # 4 fatos
+|   |   `-- 05_gold_kpis.py             # vw_kpi_business pre-joinada
+|   `-- utils/
+|       |-- __init__.py
+|       |-- config.py                   # SCHEMAS, paths, lookups canonicos
+|       `-- data_helpers.py             # parse_date, br_to_us_decimal, classify_dq
+`-- tests/
+    |-- conftest.py                     # Fixture spark local[1] com fallback Windows
+    `-- test_data_helpers.py            # 15 testes pytest+chispa offline
 ```
 
-A subdivisao por camada (`00_setup`, `01_bronze`, `02_silver`, `03_gold`) reflete o Medallion na propria arvore do workspace Databricks: sources e instrumentacao ficam separados das tabelas de pipeline.
+A subdivisao por camada (`00_setup`, `01_bronze`, `02_silver`, `03_gold`) reflete o Medallion na propria arvore do workspace Databricks: sources e instrumentacao ficam separados das tabelas de pipeline. Os 5 ADRs em `docs/adr/` documentam decisoes arquiteturais no formato Michael Nygard.
 
 ---
 
@@ -148,7 +177,7 @@ A subdivisao por camada (`00_setup`, `01_bronze`, `02_silver`, `03_gold`) reflet
 
 - Conta gratuita em [Databricks Free Edition](https://www.databricks.com/learn/free-edition) (catalog `workspace` com Unity Catalog ja habilitado).
 - [Databricks CLI v0.200+](https://docs.databricks.com/en/dev-tools/cli/install.html) com profile configurado.
-- Python 3.10+ local (apenas para `databricks workspace import-dir`).
+- Python 3.10+ local (apenas para `databricks workspace import-dir` e pytest).
 
 ### Setup do ambiente (via CLI)
 
@@ -156,20 +185,19 @@ A subdivisao por camada (`00_setup`, `01_bronze`, `02_silver`, `03_gold`) reflet
 # 1. Configurar profile
 databricks configure --profile case-levva --host https://<workspace>.cloud.databricks.com
 
-# 2. Criar schema e volume no Unity Catalog
-databricks schemas create case_levva workspace --comment "Case Levva"
-databricks volumes create workspace case_levva sources MANAGED --comment "Sources brutas"
+# 2. Importar notebooks no workspace
+MSYS_NO_PATHCONV=1 databricks workspace import-dir notebooks /Users/<user>/case_levva --overwrite --profile case-levva
 
-# 3. Upload das 9 fontes para o Volume
-databricks fs cp "Case - Data Sources" "dbfs:/Volumes/workspace/case_levva/sources" --recursive --profile case-levva
+# 3. Executar one-shot de migracao de schemas (cria landing/bronze/silver/gold + Volume)
+databricks jobs submit --json '{"run_name":"setup","tasks":[{"task_key":"setup","notebook_task":{"notebook_path":"/Users/<user>/case_levva/00_setup/00_rename_schemas"}}]}' --profile case-levva
 
-# 4. Importar notebooks no workspace
-databricks workspace import-dir notebooks /Users/<user>/case_levva --overwrite --profile case-levva
+# 4. Upload das 9 fontes para o Volume
+MSYS_NO_PATHCONV=1 databricks fs cp --recursive "Case - Data Sources/" "dbfs:/Volumes/workspace/landing/sources/" --profile case-levva --overwrite
 ```
 
 ### Execucao do pipeline
 
-O repositorio inclui um JSON de job multi-task que orquestra todo o pipeline com paralelismo nos silvers:
+O repositorio inclui um JSON de job multi-task que orquestra o pipeline com paralelismo nos silvers:
 
 ```text
 01_bronze_ingest
@@ -183,7 +211,7 @@ O repositorio inclui um JSON de job multi-task que orquestra todo o pipeline com
   `--> 02_silver_ocorrencias      /
                 |
                 v
-       03_gold_dimensions
+       03_gold_dimensions  (inclui dim_cliente_history SCD2 + dim_data enriquecida)
                 |
                 v
        04_gold_facts
@@ -192,52 +220,60 @@ O repositorio inclui um JSON de job multi-task que orquestra todo o pipeline com
        05_gold_kpis
                 |
                 v
-       99_validation
+       99_validation       (reconciliacao + time travel demo)
 ```
 
 Submit via CLI:
 
 ```bash
+# Pipeline principal
 databricks jobs submit --json @pipeline_dag.json --profile case-levva
+
+# Aplicar governanca UC pos-pipeline (one-shot, idempotente)
+databricks jobs submit --json '{"run_name":"governance","tasks":[{"task_key":"gov","notebook_task":{"notebook_path":"/Users/<user>/case_levva/00_setup/01_apply_governance"}}]}' --profile case-levva
 ```
 
-Tempo total esperado: **~15-25 minutos** em serverless do Free Edition (cold start + fila de concorrencia).
+Tempo total esperado: **~5-10 minutos** em serverless do Free Edition (com cache warm).
+
+### Rodar testes locais
+
+```bash
+pip install -e ".[dev,spark]"
+pytest tests/ -v
+```
+
+15 casos de teste pytest+chispa (Spark local[1]). Cobre: parsing date multi-formato, br_to_us_decimal, parsing timestamp ISO com 'T', classificacao DQ por tipo (PK ausente -> rejected; formato -> warning).
 
 ---
 
 ## Modelo analitico final
 
-### Dimensoes (SCD Type 1)
+Detalhes completos em [docs/data_model.md](docs/data_model.md) (inclui bus matrix + SCD type por dim + ER diagram).
 
-| Tabela | Granularidade | Chave |
-|---|---|---|
-| `dim_cliente` | 1 linha por cliente | `customer_code` |
-| `dim_produto` | 1 linha por produto | `product_code` |
-| `dim_canal` | 1 linha por canal de venda | `canal_id` |
-| `dim_regiao` | 1 linha por regiao (apos dedup) | `regional_code` |
-| `dim_vendedor` | 1 linha por vendedor (apos dedup) | `seller_id` |
-| `dim_data` | 1 linha por dia | `data_id` (YYYYMMDD) |
+### Dimensoes (6 SCD1 + 1 SCD2)
 
-### Fatos
+| Tabela | Granularidade | Tipo SCD | Linhas |
+|---|---|---|---|
+| `dim_cliente` | 1 linha por cliente | Type 1 (overwrite) | 180 |
+| `dim_cliente_history` | 1 linha por (cliente, versao) | **Type 2** ([ADR-002](docs/adr/ADR-002-scd1-vs-scd2.md)) | 169 (1a ingest) |
+| `dim_produto` | 1 linha por produto | Type 1 | 71 |
+| `dim_canal` | 1 linha por canal | Type 1 | 7 |
+| `dim_regiao` | 1 linha por regiao | Type 1 | 6 |
+| `dim_vendedor` | 1 linha por vendedor | Type 1 | 40 |
+| `dim_data` | 1 linha por dia + feriados BR 2025 | Type 1 (regenerada) | ~430 |
+
+### Fatos (4)
 
 | Tabela | Granularidade | Metricas principais |
 |---|---|---|
-| `fact_pedido` | 1 linha por pedido | gross_amount, discount_amount, net_amount |
-| `fact_item` | 1 linha por item de pedido | quantity, unit_price, total_item |
+| `fact_pedido` | 1 linha por pedido | gross_amount, discount_amount, net_amount + CHECK constraint |
+| `fact_item` | 1 linha por item | quantity, unit_price, total_item |
 | `fact_entrega` | 1 linha por entrega | cost, lead_time_dias, atraso_dias, on_time_flag |
 | `fact_ocorrencia` | 1 linha por ticket | severity_score, count |
 
-### View consolidada - `vw_kpi_business`
+### View consolidada `vw_kpi_business`
 
-Juncao pre-calculada de fatos x dimensoes, granular pedido, com flags para analise rapida:
-
-- `data_pedido`, `ano_mes`, `trimestre`
-- `regiao_nome`, `canal_nome`, `categoria_produto`
-- `cliente_segmento`, `vendedor_nome`
-- `valor_liquido`, `qtd_itens`, `ticket_medio`
-- `flag_cancelado`, `flag_atrasado`, `flag_com_ocorrencia`
-
-Detalhes em [`docs/data_model.md`](docs/data_model.md).
+Pre-joined de pedido + cliente + canal + regiao + vendedor com flags operacionais (`flag_atrasado`, `flag_cancelado`, `flag_com_ocorrencia`). Ponto de entrada para o BI - usar [docs/BI_RUNBOOK.md](docs/BI_RUNBOOK.md) como guia.
 
 ---
 
@@ -245,46 +281,58 @@ Detalhes em [`docs/data_model.md`](docs/data_model.md).
 
 O modelo permite que o Analista de BI responda diretamente:
 
-1. **Como o negocio performou no periodo?** -> `vw_kpi_business` agregada por mes
-2. **Quais regioes/canais/categorias tem melhor e pior desempenho?** -> Group by x `valor_liquido` ranqueado
-3. **Onde estao os gargalos operacionais?** -> `fact_entrega` com `flag_atrasado` + `fact_ocorrencia` por tipo
-4. **Existem sinais de perda de receita?** -> Diferenca entre `gross_amount` e `net_amount` cruzada com motivo
-5. **Que acoes priorizar?** -> Heatmap de combinacoes canal x regiao x categoria com piores indicadores
+1. **Como o negocio performou no periodo?** -> `vw_kpi_business` agregada por mes (`dim_data.ano_mes`)
+2. **Quais regioes/canais/categorias tem melhor desempenho?** -> Group by + ranking por `valor_liquido`
+3. **Onde estao os gargalos operacionais?** -> `fact_entrega.flag_atrasado` + `fact_ocorrencia` por tipo
+4. **Existem sinais de perda de receita?** -> `gross_amount - net_amount` cruzado com `flag_cancelado`
+5. **Que acoes priorizar?** -> Heatmap canal x regiao x categoria com piores indicadores
 
-SQL pronto para cada pergunta em [`docs/business_questions.md`](docs/business_questions.md).
+SQL pronto para cada pergunta em [docs/business_questions.md](docs/business_questions.md) e [docs/BI_RUNBOOK.md](docs/BI_RUNBOOK.md).
 
 ---
 
-## Decisoes tecnicas
+## Decisoes tecnicas (ADRs)
 
-Resumo das decisoes mais importantes - racional completo em [`docs/architecture.md`](docs/architecture.md) e [`docs/data_quality.md`](docs/data_quality.md).
+5 Architecture Decision Records no formato Michael Nygard PT-BR documentam as escolhas arquiteturais:
 
-| Decisao | Por que |
-|---|---|
-| **Bronze como string-typed** | Preserva qualquer formato original sem perda; cast acontece no Silver com `try_cast` para resiliencia |
-| **Schemas namespaced por camada** | `workspace.case_levva_bronze/silver/gold` em vez de schemas globais evita colisao em ambientes multi-projeto |
-| **`try_cast` via `F.expr` em ANSI mode** | Photon Spark 4.1 default ANSI estrito rejeita `cast` direto de strings malformadas; `try_cast` retorna NULL |
-| **`regexp_replace` para decimal BR** | Trata virgula como separador decimal (10.788,64 -> 10788.64) |
-| **Dedup com `row_number()` por timestamp + record_id** | Quando ha multiplas versoes do mesmo registro, a mais recente vence (tiebreak deterministico) |
-| **Padronizacao de regional_code via lookup** | "S" e "sul" mapeiam para mesmo codigo canonico antes do join |
-| **`dim_data` gerada** | Cobre todo o range de datas dos fatos + permite analise por trimestre/dia da semana sem calculo runtime |
-| **DQ flags ao inves de drop** | Registros problematicos sao marcados, nao removidos; da visibilidade ao negocio |
-| **Multi-task job com DAG** | Orquestra paralelismo dos silvers e dependencias explicitas gold; vitrine visual no UI Databricks |
+| ADR | Topico | Resumo |
+|---|---|---|
+| [ADR-001](docs/adr/ADR-001-bronze-as-string.md) | Bronze string-typed | Preserva formato original byte-a-byte; casts apenas no Silver com `try_cast` ANSI-safe |
+| [ADR-002](docs/adr/ADR-002-scd1-vs-scd2.md) | SCD1 padrao + SCD2 demonstrativa | Hash MD5 sobre 4 colunas tracking; range join sem surrogate key |
+| [ADR-003](docs/adr/ADR-003-medallion-3-layer.md) | Medallion 3-camadas + landing | Schemas curtos sem prefixo; pattern canonico Databricks |
+| [ADR-004](docs/adr/ADR-004-free-edition-vs-premium.md) | Free Edition vs Premium | Limitacoes conscientes (sem DLT/Workflows/RBAC granular) + roadmap |
+| [ADR-005](docs/adr/ADR-005-dq-flags-vs-dlq.md) | DQ flags + quarantine pattern | Equivalente arquitetural a DLT no Free Edition; bug `array_remove(arr, NULL)` documentado |
+
+---
+
+## Documentacao adicional
+
+| Documento | Conteudo |
+|-----------|----------|
+| [BI_RUNBOOK.md](docs/BI_RUNBOOK.md) | Guia para Analista BI: 5 queries prontas + mapping pergunta->tabela + dicas |
+| [TABLES.md](docs/TABLES.md) | Data dictionary das 28 tabelas: granularidade, PK, FKs, owner, SLA |
+| [GLOSSARY.md](docs/GLOSSARY.md) | Glossario de negocio: 28 termos (ticket medio, lead time, severity, etc) |
+| [NAMING_CONVENTIONS.md](docs/NAMING_CONVENTIONS.md) | Convencoes: schemas, tabelas, colunas, tags UC, ADRs, codigo |
+| [data_model.md](docs/data_model.md) | Bus matrix Kimball + SCD type por dim + ER diagram + premissas |
+| [data_quality.md](docs/data_quality.md) | 51 issues mapeadas + tratamentos + premissas DQ |
+| [business_questions.md](docs/business_questions.md) | 5 perguntas do negocio respondidas com SQL |
+| [architecture.md](docs/architecture.md) | Detalhe completo das camadas e fluxo |
 
 ---
 
 ## Limitacoes conhecidas
 
-A solucao foi construida no **Databricks Free Edition**, que tem limitacoes relevantes versus Premium:
+A solucao foi construida no **Databricks Free Edition** ([ADR-004](docs/adr/ADR-004-free-edition-vs-premium.md)). Limitacoes vs Premium documentadas:
 
-| Limitacao | Impacto | Mitigacao aplicada |
-|---|---|---|
-| **Serverless only, sem cluster proprio** | Sem controle fino de tamanho/auto-scaling | Pipeline tolera cold start e fila de concorrencia |
-| **Concorrencia limitada de tasks paralelas** | Free Edition serializa silvers quando estoura quota | DAG continua correto, apenas paraleliza menos |
-| **Sem Workflows agendados** | Pipeline executado on-demand via `jobs submit` | Documentacao + JSON do DAG versionado |
-| **Sem DLT (Delta Live Tables)** | Sem expectations declarativas | DQ implementado em PySpark dentro de cada Silver |
-
-ANSI mode estrito ativado por padrao no Photon Spark 4.1 do Free Edition exige que casts e parsing de datas sejam resilientes (`try_cast`, `try_to_date`, `try_to_timestamp`) - adotado em todos os silvers.
+| Limitacao | Mitigacao aplicada |
+|---|---|
+| **Serverless only** (sem cluster proprio) | Pipeline tolera cold start; ANSI mode estrito tratado em todos os silvers |
+| **Concorrencia limitada de tasks** (max 5 paralelas) | DAG continua correto; Free Edition serializa silvers |
+| **Sem Workflows agendados** | Pipeline executado on-demand via `jobs submit` (DAG json versionado) |
+| **Sem DLT (Delta Live Tables)** | DQ implementado em PySpark com flags + quarantine ([ADR-005](docs/adr/ADR-005-dq-flags-vs-dlq.md)) |
+| **Sem RBAC granular** | Tags `owner`, `pii`, `classification` aplicadas via `ALTER TABLE SET TAGS` |
+| **`system.access.audit_log` indisponivel** | Documentado como Premium feature no roadmap |
+| **CHECK em VIEW** nao suportado | View tem COMMENT mas nao tags/constraints individuais (limitacao UC) |
 
 ---
 
@@ -292,14 +340,16 @@ ANSI mode estrito ativado por padrao no Photon Spark 4.1 do Free Edition exige q
 
 Sugestoes de evolucao caso a solucao fosse promovida para producao:
 
-1. **Migracao para Databricks Premium** - controle de cluster, Workflows agendados, RBAC granular
-2. **Orquestracao via Workflows** - substituir `jobs submit` por job agendado declarativo
-3. **Adicionar testes automatizados** (`pytest-spark` ou `chispa`) - coverage minima nos transforms criticos
-4. **CDC nas fontes transacionais** - ERP de pedidos provavelmente ja tem CDC; ingestao incremental real ao inves de full refresh
-5. **Delta Live Tables** - substitui DQ manual por expectations declarativas
-6. **Particionamento estrategico** dos fatos por `ano_mes` + `regional_code` para query performance
-7. **Observabilidade** - exportar metricas de DQ + volumes processados para Datadog ou Grafana
-8. **CI/CD via Databricks Asset Bundles** - deploy automatizado dev -> stage -> prod
+1. **Migracao para Databricks Premium** - habilitaria DLT, Workflows agendados, RBAC granular, audit_log
+2. **CI/CD via Databricks Asset Bundles + GitHub Actions** - deploy automatizado dev -> stage -> prod
+3. **Surrogate keys nas dims** - eliminaria range join na consulta SCD2 (atualmente `BETWEEN effective_date AND end_date`)
+4. **Particionamento dos fatos por `ano_mes`** - relevante quando volume passar de 10M+ rows
+5. **CDC nas fontes transacionais** - ingestao incremental real ao inves de full refresh
+6. **Quarantine tables explicitas em todos os silvers** - hoje quarantine_* eh stub (ADR-005); separar registros rejected em tabela paralela
+7. **Refactor 8 silvers para usar `notebooks/utils/data_helpers.py`** - eliminar funcoes duplicadas; tests pytest cobrem helpers
+8. **Logging estruturado + `pipeline_metrics` table** - observability centralizada (ja desenhada, falta deploy)
+9. **Service principal como owner** das tabelas em producao (hoje owner = email pessoal)
+10. **dbt + Atlan** para data catalog auto-sincronizado (substitui `01_apply_governance.py` manual)
 
 ---
 

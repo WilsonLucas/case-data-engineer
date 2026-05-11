@@ -4,6 +4,40 @@
 
 ---
 
+## Bus Matrix (Kimball)
+
+Mapping de quais dimensoes (compartilhadas/conformed) sao usadas por quais fatos. `X` indica relacionamento direto; `(via)` indica relacionamento transitivo via outra entidade.
+
+| Dimensao / Fato | fact_pedido | fact_item | fact_entrega | fact_ocorrencia |
+|------------------|-------------|-----------|--------------|------------------|
+| `dim_cliente` | X | (via fact_pedido) | (via fact_pedido) | (via fact_pedido) |
+| `dim_cliente_history` (SCD2) | X (range join) | - | - | - |
+| `dim_produto` | - | X | - | - |
+| `dim_canal` | X | (via fact_pedido) | - | - |
+| `dim_vendedor` | X | - | - | - |
+| `dim_regiao` | (via dim_vendedor) | - | (destination_state) | - |
+| `dim_data` | X (data_pedido) | - | X (data_envio + data_entrega) | X (created_at) |
+
+**Conformed dimensions:** `dim_cliente`, `dim_canal`, `dim_data` aparecem em multiplos fatos com o mesmo significado, garantindo cross-fact analysis consistente.
+
+**Degenerate dimensions:** `payment_method`, `payment_status` (em `fact_pedido`) e `severity` (em `fact_ocorrencia`) sao atributos textuais mantidos no fato sem dim propria por baixa cardinalidade e uso exclusivo do fato (Kimball pattern).
+
+---
+
+## SCD Type por Dimensao
+
+| Dimensao | Tipo SCD | Justificativa |
+|----------|----------|---------------|
+| `dim_cliente` | Type 1 (overwrite) | Estado atual; consumido por queries comuns de BI sem necessidade de historico |
+| `dim_cliente_history` | **Type 2** (versionado) | Historico de mudancas de segmento/UF/cidade/status (ADR-002). Tabela paralela, nao substitui dim_cliente. Hash MD5 sobre 4 colunas tracking, MERGE pattern |
+| `dim_produto` | Type 1 | Catalogo simples; historico nao requerido no escopo do case |
+| `dim_canal` | Type 1 | 7 canais estaveis; mudancas raras |
+| `dim_vendedor` | Type 1 | Status (ATIVO/INATIVO) muda mas analise atual basta |
+| `dim_regiao` | Type 1 | Estatica (5 macro-regioes do Brasil) |
+| `dim_data` | Type 1 (geracao deterministica) | Calendario completo regenerado a cada execucao com folga de 30 dias antes/depois do range dos fatos. Inclui feriados BR 2025 + atributos analiticos (semana_iso, eh_dia_util, ultimo_dia_mes) |
+
+---
+
 ## Diagrama ER simplificado
 
 ```mermaid

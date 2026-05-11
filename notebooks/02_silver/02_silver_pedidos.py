@@ -1,20 +1,20 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Tabelas: workspace.case_levva_silver.pedidos_cabecalho + pedidos_itens
+# MAGIC # Tabelas: workspace.silver.pedidos_cabecalho + pedidos_itens
 # MAGIC ## Objetivo:
 # MAGIC Normalizar pedidos a partir do bronze, em duas tabelas paralelas (granular pedido e granular item). Trata: 3 formatos de data misturados (`order_date`, `promised_date`, `last_update`), decimal BR (vírgula) -> US (ponto), padronização de `status_order` para canônico (`FATURADO`/`EM_SEPARACAO`/`CANCELADO`/`OUTRO`), parse de `payment_details` JSON aninhado, validação `net = gross - discount`, recalculo de `total_item` para detectar divergências de arredondamento. Saída alimenta `fact_pedido` e `fact_item` no gold.
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `workspace.case_levva_bronze.pedidos_cabecalho` | Cabeçalhos brutos (~403 linhas) com `payment_details` como JSON string |
-# MAGIC | `workspace.case_levva_bronze.pedidos_itens` | Itens brutos (~995 linhas) com `quantity`, `unit_price`, `total_item` como string |
+# MAGIC | `workspace.bronze.pedidos_cabecalho` | Cabeçalhos brutos (~403 linhas) com `payment_details` como JSON string |
+# MAGIC | `workspace.bronze.pedidos_itens` | Itens brutos (~995 linhas) com `quantity`, `unit_price`, `total_item` como string |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
 # MAGIC |------|------------------|-------------|
 # MAGIC | 2026-05-08 | Wilson Lucas | Criação do notebook |
-# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.case_levva_silver` |
+# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.silver` |
 # MAGIC | 2026-05-10 | Wilson Lucas | ANSI mode fixes: cast `double->int` em `quantity`/`item_seq`; `try_cast` em decimals via `F.expr`; troca de `F.try_to_*` para `F.expr("try_to_*")` |
 
 # COMMAND ----------
@@ -22,7 +22,7 @@
 from pyspark.sql import functions as F
 from pyspark.sql.types import *
 
-SILVER_SCHEMA = "workspace.case_levva_silver"
+SILVER_SCHEMA = "workspace.silver"
 
 
 # Função utilitária — multi-format date
@@ -58,7 +58,7 @@ def br_to_us_decimal(col_name):
 
 # COMMAND ----------
 
-df_bronze_cab = spark.table("workspace.case_levva_bronze.pedidos_cabecalho")
+df_bronze_cab = spark.table("workspace.bronze.pedidos_cabecalho")
 print(f"[BRONZE] Cabeçalho: {df_bronze_cab.count()} linhas")
 
 # Schema do payment_details (JSON aninhado)
@@ -104,26 +104,25 @@ df_cab_validated = df_cab_normalized.withColumn(
 # 3. DQ flags
 df_cab_dq = df_cab_validated.withColumn(
     "_dq_reasons",
-    F.array_remove(
+    F.array_compact(
         F.array(
             F.when(F.col("order_date").isNull(), F.lit("order_date inválida")).otherwise(F.lit(None)),
             F.when(F.col("net_amount").isNull(), F.lit("net_amount inválido")).otherwise(F.lit(None)),
-            F.when(F.col("divergencia_net_amount") == True, F.lit("net_amount divergente do calculado")).otherwise(
+            F.when(F.col("divergencia_net_amount"), F.lit("net_amount divergente do calculado")).otherwise(
                 F.lit(None)
             ),
             F.when(
                 F.col("status_canonico") == "OUTRO",
-                F.lit(F.concat(F.lit("status não canônico: "), F.col("status_order"))),
+                F.concat(F.lit("status não canônico: "), F.col("status_order")),
             ).otherwise(F.lit(None)),
             F.when(F.col("payment_method").isNull(), F.lit("payment_method ausente")).otherwise(F.lit(None)),
-        ),
-        None,
+        )
     ),
 ).withColumn(
     "_dq_status",
     F.when(F.size("_dq_reasons") == 0, F.lit("clean"))
     .when(F.size("_dq_reasons") <= 2, F.lit("warning"))
-    .otherwise(F.lit("warning")),
+    .otherwise(F.lit("rejected")),
 )
 
 # 4. Schema final
@@ -155,7 +154,7 @@ df_cab_final = df_cab_dq.select(
 )
 
 print(
-    f"\n[OK] workspace.case_levva_silver.pedidos_cabecalho gravada. {spark.table(f'{SILVER_SCHEMA}.pedidos_cabecalho').count()} linhas."
+    f"\n[OK] workspace.silver.pedidos_cabecalho gravada. {spark.table(f'{SILVER_SCHEMA}.pedidos_cabecalho').count()} linhas."
 )
 spark.table(f"{SILVER_SCHEMA}.pedidos_cabecalho").groupBy("_dq_status").count().show()
 spark.table(f"{SILVER_SCHEMA}.pedidos_cabecalho").groupBy("status_canonico").count().show()
@@ -167,7 +166,7 @@ spark.table(f"{SILVER_SCHEMA}.pedidos_cabecalho").groupBy("status_canonico").cou
 
 # COMMAND ----------
 
-df_bronze_itens = spark.table("workspace.case_levva_bronze.pedidos_itens")
+df_bronze_itens = spark.table("workspace.bronze.pedidos_itens")
 print(f"[BRONZE] Itens: {df_bronze_itens.count()} linhas")
 
 # 1. Cast e normalização
@@ -195,16 +194,15 @@ df_itens_validated = df_itens_normalized.withColumn(
 # 3. DQ flags
 df_itens_dq = df_itens_validated.withColumn(
     "_dq_reasons",
-    F.array_remove(
+    F.array_compact(
         F.array(
             F.when(F.col("quantity").isNull(), F.lit("quantity inválida")).otherwise(F.lit(None)),
             F.when(F.col("unit_price").isNull(), F.lit("unit_price inválido")).otherwise(F.lit(None)),
             F.when(F.col("item_status") == "NAO_INFORMADO", F.lit("item_status ausente")).otherwise(F.lit(None)),
-            F.when(F.col("divergencia_total") == True, F.lit("total_item divergente de quantity×unit_price")).otherwise(
+            F.when(F.col("divergencia_total"), F.lit("total_item divergente de quantity×unit_price")).otherwise(
                 F.lit(None)
             ),
-        ),
-        None,
+        )
     ),
 ).withColumn("_dq_status", F.when(F.size("_dq_reasons") == 0, F.lit("clean")).otherwise(F.lit("warning")))
 
@@ -233,6 +231,6 @@ df_itens_final = df_itens_dq.select(
 )
 
 print(
-    f"\n[OK] workspace.case_levva_silver.pedidos_itens gravada. {spark.table(f'{SILVER_SCHEMA}.pedidos_itens').count()} linhas."
+    f"\n[OK] workspace.silver.pedidos_itens gravada. {spark.table(f'{SILVER_SCHEMA}.pedidos_itens').count()} linhas."
 )
 spark.table(f"{SILVER_SCHEMA}.pedidos_itens").groupBy("_dq_status").count().show()

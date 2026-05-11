@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Arquitetura - Case Engenheiro de Dados</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0d1525;
+    --surface: #16213a;
+    --line: #243557;
+    --fg: #e8eef7;
+    --muted: #92a0b3;
+    --accent: #5dd5ff;
+    --bronze: #c5793b;
+    --silver: #b9c2cc;
+    --gold: #ffc94a;
+    --landing: #6b7e94;
+    --good: #62d97c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 40px; font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--fg);
+  }
+  h1 { font-size: 32px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); margin: 0 0 32px; }
+  .pipeline {
+    display: grid; gap: 24px;
+    grid-template-columns: 200px 1fr 1fr 1fr;
+    align-items: stretch;
+  }
+  .layer {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 20px;
+    display: flex; flex-direction: column;
+  }
+  .layer h2 {
+    margin: 0 0 12px; font-size: 18px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .layer h2 .pill {
+    font-size: 11px; padding: 4px 10px; border-radius: 999px;
+    background: rgba(93, 213, 255, 0.1); color: var(--accent);
+    border: 1px solid var(--accent); font-weight: 500;
+  }
+  .layer-landing { border-left: 4px solid var(--landing); }
+  .layer-bronze { border-left: 4px solid var(--bronze); }
+  .layer-silver { border-left: 4px solid var(--silver); }
+  .layer-gold { border-left: 4px solid var(--gold); }
+  .table-card {
+    background: rgba(0, 0, 0, 0.2); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px 12px; font-size: 13px;
+    margin-bottom: 6px; cursor: pointer; transition: all 0.15s;
+  }
+  .table-card:hover { background: rgba(93, 213, 255, 0.08); border-color: var(--accent); }
+  .table-card .name { color: var(--fg); font-family: monospace; }
+  .table-card .meta { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .arrow {
+    text-align: center; padding: 60px 0;
+    color: var(--accent); font-size: 32px;
+  }
+  .legend {
+    margin-top: 32px; display: flex; gap: 24px; flex-wrap: wrap;
+    background: var(--surface); padding: 16px 20px; border-radius: 12px;
+    border: 1px solid var(--line);
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 4px; }
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-top: 24px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 16px;
+  }
+  .stat-card .num { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat-card .label { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .footer { margin-top: 32px; color: var(--muted); font-size: 13px; text-align: center; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .arrow-row { display: flex; gap: 24px; align-items: center; justify-content: center; padding: 16px 0; color: var(--muted); }
+  .scd2 { background: linear-gradient(135deg, rgba(255, 201, 74, 0.1), rgba(93, 213, 255, 0.1)); }
+</style>
+</head>
+<body>
+
+<h1>Arquitetura Medallion - Case Engenheiro de Dados</h1>
+<p class="subtitle">9 fontes brutas <span style="color:var(--accent)">&rarr;</span> 28 tabelas Delta + 1 view <span style="color:var(--accent)">&rarr;</span> Analista de BI. Reconciliacao end-to-end <strong style="color:var(--good)">R$ 1.707.675,84</strong>.</p>
+
+<div class="pipeline">
+  <div class="layer layer-landing">
+    <h2>Landing <span class="pill">UC Volume</span></h2>
+    <div class="table-card"><div class="name">erp_pedidos_cabecalho.csv</div><div class="meta">CSV ; / 403 rows</div></div>
+    <div class="table-card"><div class="name">erp_pedidos_itens.csv</div><div class="meta">CSV , / 995 rows</div></div>
+    <div class="table-card"><div class="name">cadastro_produtos_api_dump.json</div><div class="meta">JSON aninhado / 72 rows</div></div>
+    <div class="table-card"><div class="name">crm_clientes_export.xlsx</div><div class="meta">XLSX / 183 rows</div></div>
+    <div class="table-card"><div class="name">comercial_canais.xlsx</div><div class="meta">XLSX / 8 rows</div></div>
+    <div class="table-card"><div class="name">vendedores.csv</div><div class="meta">CSV ; / 42 rows</div></div>
+    <div class="table-card"><div class="name">legado_regioes_pipe.txt</div><div class="meta">Pipe TXT / 8 rows</div></div>
+    <div class="table-card"><div class="name">logistica_entregas.json</div><div class="meta">JSON array / 322 rows</div></div>
+    <div class="table-card"><div class="name">atendimento_ocorrencias.ndjson</div><div class="meta">NDJSON / 270 rows</div></div>
+  </div>
+
+  <div class="layer layer-bronze">
+    <h2>Bronze <span class="pill">9 tabelas</span></h2>
+    <div class="table-card"><div class="name">bronze.pedidos_cabecalho</div><div class="meta">string-typed + _source_file + _ingestion_timestamp</div></div>
+    <div class="table-card"><div class="name">bronze.pedidos_itens</div><div class="meta">string-typed</div></div>
+    <div class="table-card"><div class="name">bronze.produtos</div><div class="meta">JSON serializado como string</div></div>
+    <div class="table-card"><div class="name">bronze.clientes</div><div class="meta">PII / via pandas</div></div>
+    <div class="table-card"><div class="name">bronze.canais</div><div class="meta">via pandas</div></div>
+    <div class="table-card"><div class="name">bronze.vendedores</div><div class="meta">PII</div></div>
+    <div class="table-card"><div class="name">bronze.regioes</div><div class="meta">pipe-delimited</div></div>
+    <div class="table-card"><div class="name">bronze.entregas</div><div class="meta">JSON aninhado</div></div>
+    <div class="table-card"><div class="name">bronze.ocorrencias</div><div class="meta">NDJSON</div></div>
+  </div>
+
+  <div class="layer layer-silver">
+    <h2>Silver <span class="pill">9 tabelas + DQ</span></h2>
+    <div class="table-card"><div class="name">silver.pedidos_cabecalho</div><div class="meta">try_cast ANSI + status canonico + DQ flags</div></div>
+    <div class="table-card"><div class="name">silver.pedidos_itens</div><div class="meta">try_cast ANSI</div></div>
+    <div class="table-card"><div class="name">silver.produtos</div><div class="meta">flatten 3 JSONs aninhados</div></div>
+    <div class="table-card"><div class="name">silver.clientes</div><div class="meta">dedup window function (180 / 183)</div></div>
+    <div class="table-card"><div class="name">silver.canais</div><div class="meta">dedup CH05 (7 / 8)</div></div>
+    <div class="table-card"><div class="name">silver.vendedores</div><div class="meta">dedup V004/V008 (40 / 42)</div></div>
+    <div class="table-card"><div class="name">silver.regioes</div><div class="meta">dedup S/Sul, SE/Sudeste (6 / 8)</div></div>
+    <div class="table-card"><div class="name">silver.entregas</div><div class="meta">flatten + lead_time_dias derivado</div></div>
+    <div class="table-card"><div class="name">silver.ocorrencias</div><div class="meta">5 formatos timestamp + severity_score</div></div>
+  </div>
+
+  <div class="layer layer-gold">
+    <h2>Gold <span class="pill">11 + 1 view</span></h2>
+    <div class="table-card"><div class="name">gold.dim_cliente</div><div class="meta">SCD1 / 180</div></div>
+    <div class="table-card scd2"><div class="name">gold.dim_cliente_history</div><div class="meta">SCD2 / 169 / hash MD5 + range join</div></div>
+    <div class="table-card"><div class="name">gold.dim_produto</div><div class="meta">SCD1 / 71</div></div>
+    <div class="table-card"><div class="name">gold.dim_canal</div><div class="meta">SCD1 / 7</div></div>
+    <div class="table-card"><div class="name">gold.dim_vendedor</div><div class="meta">SCD1 / 40</div></div>
+    <div class="table-card"><div class="name">gold.dim_regiao</div><div class="meta">SCD1 / 6</div></div>
+    <div class="table-card"><div class="name">gold.dim_data</div><div class="meta">enriquecida (12 feriados BR 2025 + semana_iso)</div></div>
+    <div class="table-card"><div class="name">gold.fact_pedido</div><div class="meta">CHECK constraint net_amount &gt;= 0</div></div>
+    <div class="table-card"><div class="name">gold.fact_item</div><div class="meta">995 rows / FK product_code</div></div>
+    <div class="table-card"><div class="name">gold.fact_entrega</div><div class="meta">325 rows / lead_time + on_time_flag</div></div>
+    <div class="table-card"><div class="name">gold.fact_ocorrencia</div><div class="meta">270 rows / severity_score</div></div>
+    <div class="table-card"><div class="name">gold.vw_kpi_business</div><div class="meta">View pre-joinada para BI</div></div>
+  </div>
+</div>
+
+<div class="arrow-row">
+  <span>landing</span> <span style="color:var(--accent);font-size:18px;">&rarr;</span>
+  <span>bronze</span> <span style="color:var(--accent);font-size:18px;">&rarr;</span>
+  <span>silver (com quarantine)</span> <span style="color:var(--accent);font-size:18px;">&rarr;</span>
+  <span>gold (star schema dimensional)</span> <span style="color:var(--accent);font-size:18px;">&rarr;</span>
+  <span>BI Consumer (vw_kpi_business + dim_cliente_history range join)</span>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background: var(--landing)"></div>Landing - UC Volume com arquivos brutos</div>
+  <div class="legend-item"><div class="legend-dot" style="background: var(--bronze)"></div>Bronze - Delta string-typed (ADR-001)</div>
+  <div class="legend-item"><div class="legend-dot" style="background: var(--silver)"></div>Silver - typed + dedup + DQ split (ADR-005)</div>
+  <div class="legend-item"><div class="legend-dot" style="background: var(--gold)"></div>Gold - star schema (ADR-002, ADR-003)</div>
+  <div class="legend-item"><div class="legend-dot" style="background: linear-gradient(135deg, var(--gold), var(--accent))"></div>SCD2 demonstrativa (range join)</div>
+</div>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="num">28</div>
+    <div class="label">Tabelas Delta + 1 view</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">100%</div>
+    <div class="label">Tabelas com COMMENT + 5 TAGS</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">5</div>
+    <div class="label">ADRs Nygard PT-BR</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">~6 min</div>
+    <div class="label">Wall-clock pipeline (Free Edition)</div>
+  </div>
+</div>
+
+<div class="footer">
+  Repositorio: <a href="https://github.com/WilsonLucas/case-data-engineer">github.com/WilsonLucas/case-data-engineer</a>
+  &middot; Wilson Lucas da Cruz Pinto - Engenheiro de Dados Senior &middot; 2026
+</div>
+
+</body>
+</html>

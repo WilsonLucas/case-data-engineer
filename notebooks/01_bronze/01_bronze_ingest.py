@@ -7,38 +7,37 @@
 # MAGIC %md
 # MAGIC # Notebook: 01_bronze_ingest
 # MAGIC ## Objetivo:
-# MAGIC Ingestão multi-formato das 9 fontes brutas em Delta, preservando o dado original como string e adicionando metadata técnica (`_source_file`, `_ingestion_timestamp`, `_record_id`). Tabelas materializadas no schema `workspace.case_levva_bronze`. Modo `overwrite` garante idempotência: reprocessamento não corrompe estado.
+# MAGIC Ingestão multi-formato das 9 fontes brutas em Delta, preservando o dado original como string e adicionando metadata técnica (`_source_file`, `_ingestion_timestamp`, `_record_id`). Tabelas materializadas no schema `workspace.bronze`. Modo `overwrite` garante idempotência: reprocessamento não corrompe estado.
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `/Volumes/workspace/case_levva/sources/erp_pedidos_cabecalho_2025.csv` | CSV `;` -> `workspace.case_levva_bronze.pedidos_cabecalho` |
-# MAGIC | `/Volumes/workspace/case_levva/sources/erp_pedidos_itens_2025.csv` | CSV `,` -> `workspace.case_levva_bronze.pedidos_itens` |
-# MAGIC | `/Volumes/workspace/case_levva/sources/vendedores.csv` | CSV `;` -> `workspace.case_levva_bronze.vendedores` |
-# MAGIC | `/Volumes/workspace/case_levva/sources/legado_regioes_pipe.txt` | Texto pipe `\|` -> `workspace.case_levva_bronze.regioes` |
-# MAGIC | `/Volumes/workspace/case_levva/sources/cadastro_produtos_api_dump.json` | JSON aninhado -> `workspace.case_levva_bronze.produtos` (structs serializados como JSON string) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/logistica_entregas.json` | JSON array aninhado -> `workspace.case_levva_bronze.entregas` (structs serializados como JSON string) |
-# MAGIC | `/Volumes/workspace/case_levva/sources/atendimento_ocorrencias.ndjson` | NDJSON -> `workspace.case_levva_bronze.ocorrencias` |
-# MAGIC | `/Volumes/workspace/case_levva/sources/crm_clientes_export.xlsx` | XLSX via pandas -> `workspace.case_levva_bronze.clientes` |
-# MAGIC | `/Volumes/workspace/case_levva/sources/comercial_canais.xlsx` | XLSX via pandas (sheet `canais`) -> `workspace.case_levva_bronze.canais` |
+# MAGIC | `/Volumes/workspace/landing/sources/erp_pedidos_cabecalho_2025.csv` | CSV `;` -> `workspace.bronze.pedidos_cabecalho` |
+# MAGIC | `/Volumes/workspace/landing/sources/erp_pedidos_itens_2025.csv` | CSV `,` -> `workspace.bronze.pedidos_itens` |
+# MAGIC | `/Volumes/workspace/landing/sources/vendedores.csv` | CSV `;` -> `workspace.bronze.vendedores` |
+# MAGIC | `/Volumes/workspace/landing/sources/legado_regioes_pipe.txt` | Texto pipe `\|` -> `workspace.bronze.regioes` |
+# MAGIC | `/Volumes/workspace/landing/sources/cadastro_produtos_api_dump.json` | JSON aninhado -> `workspace.bronze.produtos` (structs serializados como JSON string) |
+# MAGIC | `/Volumes/workspace/landing/sources/logistica_entregas.json` | JSON array aninhado -> `workspace.bronze.entregas` (structs serializados como JSON string) |
+# MAGIC | `/Volumes/workspace/landing/sources/atendimento_ocorrencias.ndjson` | NDJSON -> `workspace.bronze.ocorrencias` |
+# MAGIC | `/Volumes/workspace/landing/sources/crm_clientes_export.xlsx` | XLSX via pandas -> `workspace.bronze.clientes` |
+# MAGIC | `/Volumes/workspace/landing/sources/comercial_canais.xlsx` | XLSX via pandas (sheet `canais`) -> `workspace.bronze.canais` |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
 # MAGIC |------|------------------|-------------|
 # MAGIC | 2026-05-08 | Wilson Lucas | Criação do notebook |
-# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: paths Volume + schema namespace `workspace.case_levva_bronze` |
+# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: paths Volume + schema namespace `workspace.bronze` |
 # MAGIC | 2026-05-10 | Wilson Lucas | `sheet_name="canais"` explícito; lista determinística de tabelas no resumo final |
 
 # COMMAND ----------
 
 from pyspark.sql import functions as F
-from pyspark.sql.types import *
-from datetime import datetime
+from pyspark.sql.types import StringType, StructType, StructField, ArrayType, IntegerType, DoubleType, BooleanType
 import pandas as pd
 
-SOURCES_BASE = "/Volumes/workspace/case_levva/sources"
-SOURCES_LOCAL = "/Volumes/workspace/case_levva/sources"
-BRONZE_SCHEMA = "workspace.case_levva_bronze"
+SOURCES_BASE = "/Volumes/workspace/landing/sources"
+SOURCES_LOCAL = "/Volumes/workspace/landing/sources"
+BRONZE_SCHEMA = "workspace.bronze"
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {BRONZE_SCHEMA}")
 print(f"[OK] Schema {BRONZE_SCHEMA} pronto.")
@@ -53,7 +52,7 @@ print(f"[OK] Schema {BRONZE_SCHEMA} pronto.")
 
 def write_bronze(df, table_name: str, source_file: str):
     """
-    Adiciona colunas técnicas e grava em Delta no schema workspace.case_levva_bronze.
+    Adiciona colunas técnicas e grava em Delta no schema workspace.bronze.
 
     Args:
     df: DataFrame Spark com colunas como string
@@ -239,7 +238,7 @@ write_bronze(df_raw, "canais", "comercial_canais.xlsx")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SHOW TABLES IN workspace.case_levva_bronze;
+# MAGIC SHOW TABLES IN workspace.bronze;
 
 # COMMAND ----------
 

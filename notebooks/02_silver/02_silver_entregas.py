@@ -1,14 +1,14 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Tabela: workspace.case_levva_silver.entregas
+# MAGIC # Tabela: workspace.silver.entregas
 # MAGIC ## Objetivo:
 # MAGIC Normalizar dados de logística a partir do bronze. Aplana estruturas JSON aninhadas (`carrier`, `timestamps`, `destination`), padroniza `delivery_status` para PT canônico (`ENTREGUE`/`EM_TRANSITO`/`ATRASADO`), parseia timestamps multi-formato, e calcula métricas operacionais (`lead_time_dias`, `atraso_dias`, `on_time_flag`) via join com `pedidos_cabecalho` para obter `promised_date`. Saída pronta para servir como `fact_entrega` no gold.
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `workspace.case_levva_bronze.entregas` | Logística bruta com structs serializados como JSON string (~1700 linhas, ingestada de `logistica_entregas.json`) |
-# MAGIC | `workspace.case_levva_silver.pedidos_cabecalho` | Usada para enriquecer com `promised_date` e calcular `atraso_dias` (lookup join) |
+# MAGIC | `workspace.bronze.entregas` | Logística bruta com structs serializados como JSON string (~1700 linhas, ingestada de `logistica_entregas.json`) |
+# MAGIC | `workspace.silver.pedidos_cabecalho` | Usada para enriquecer com `promised_date` e calcular `atraso_dias` (lookup join) |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
@@ -21,7 +21,7 @@
 from pyspark.sql import functions as F
 from pyspark.sql.types import *
 
-SILVER_SCHEMA = "workspace.case_levva_silver"
+SILVER_SCHEMA = "workspace.silver"
 
 # COMMAND ----------
 
@@ -61,7 +61,7 @@ def parse_multi_format_timestamp(col):
 
 # COMMAND ----------
 
-df_bronze = spark.table("workspace.case_levva_bronze.entregas")
+df_bronze = spark.table("workspace.bronze.entregas")
 print(f"[BRONZE] Linhas: {df_bronze.count()}")
 
 # 1. Parse JSONs aninhados
@@ -142,7 +142,7 @@ df_with_atraso = (
 # 5. DQ flags
 df_with_dq = df_with_atraso.withColumn(
     "_dq_reasons",
-    F.array_remove(
+    F.array_compact(
         F.array(
             F.when(
                 F.col("delivery_status") == "OUTRO",
@@ -159,8 +159,7 @@ df_with_dq = df_with_atraso.withColumn(
             F.when(F.col("promised_date").isNull(), F.lit("pedido referenciado sem promised_date")).otherwise(
                 F.lit(None)
             ),
-        ),
-        None,
+        )
     ),
 ).withColumn(
     "_dq_status",
@@ -200,7 +199,7 @@ df_final = df_with_dq.select(
 )
 
 print(
-    f"\n[OK] workspace.case_levva_silver.entregas gravada. {spark.table(f'{SILVER_SCHEMA}.entregas').count()} linhas."
+    f"\n[OK] workspace.silver.entregas gravada. {spark.table(f'{SILVER_SCHEMA}.entregas').count()} linhas."
 )
 spark.table(f"{SILVER_SCHEMA}.entregas").groupBy("_dq_status").count().show()
 spark.table(f"{SILVER_SCHEMA}.entregas").groupBy("delivery_status").count().show()

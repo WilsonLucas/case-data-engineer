@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Case Engenheiro de Dados Senior - Wilson Lucas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0b1220;
+    --bg-2: #111a2e;
+    --fg: #e6edf6;
+    --muted: #9aa6b5;
+    --accent: #5cd2ff;
+    --accent-2: #ffb454;
+    --good: #6cd07a;
+    --warn: #ffcb5c;
+    --bad: #ff7a7a;
+    --line: #1d2a44;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { overflow-x: hidden; }
+  .deck { display: flex; flex-direction: column; }
+  section.slide {
+    min-height: 100vh; width: 100vw; padding: 64px 80px;
+    display: flex; flex-direction: column; justify-content: center;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+  }
+  .badge {
+    position: absolute; top: 24px; right: 32px;
+    color: var(--muted); font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase;
+  }
+  h1 { font-size: 56px; line-height: 1.1; margin: 0 0 16px; font-weight: 700; }
+  h2 { font-size: 36px; line-height: 1.2; margin: 0 0 24px; font-weight: 600; color: var(--accent); }
+  h3 { font-size: 22px; margin: 16px 0 8px; color: var(--fg); }
+  p, li { font-size: 18px; line-height: 1.6; color: var(--fg); }
+  .muted { color: var(--muted); }
+  .grid { display: grid; gap: 24px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .card {
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 24px;
+  }
+  .card .label { color: var(--muted); font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
+  .card .value { font-size: 32px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .card .footer { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .pill { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--bg-2); color: var(--accent); font-size: 12px; margin-right: 8px; border: 1px solid var(--line); }
+  table { border-collapse: collapse; margin: 16px 0; width: 100%; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 16px; }
+  th { color: var(--accent); font-weight: 600; }
+  .arrow { color: var(--accent); font-weight: 700; }
+  .good { color: var(--good); }
+  .warn { color: var(--warn); }
+  .bad  { color: var(--bad); }
+  pre {
+    background: #07101f; border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 18px; font-family: 'Cascadia Code', Consolas, monospace; font-size: 14px;
+    overflow-x: auto; color: #c9d6e3;
+  }
+  code { background: #07101f; padding: 2px 6px; border-radius: 4px; color: var(--accent); font-size: 0.9em; }
+  .hero {
+    background: linear-gradient(135deg, #0b1220 0%, #14213d 50%, #1a2547 100%);
+  }
+  .meta { color: var(--muted); font-size: 16px; margin-top: 24px; }
+  .accent { color: var(--accent); }
+  .accent-2 { color: var(--accent-2); }
+  .stat { font-size: 64px; font-weight: 800; color: var(--accent); }
+  .small { font-size: 14px; }
+  ul { padding-left: 22px; }
+  li { margin: 6px 0; }
+  .nowrap { white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+<section class="slide hero">
+  <div class="badge">01 / 12 Capa</div>
+  <h1>Case Tecnico<br/><span class="accent">Engenheiro de Dados Senior</span></h1>
+  <p class="meta">Pipeline Medallion sobre Databricks Free Edition + Unity Catalog + Delta Lake.</p>
+  <p class="meta"><strong>Wilson Lucas da Cruz Pinto</strong> &middot; 2026-05-12</p>
+  <p class="meta">github.com/WilsonLucas/case-data-engineer</p>
+</section>
+
+<section class="slide">
+  <div class="badge">02 / 12 Problema</div>
+  <h2>O problema</h2>
+  <p>Empresa de servicos com operacao nacional. Dados distribuidos em <strong>9 fontes brutas heterogeneas</strong>. Area de dados sem base consolidada para BI.</p>
+  <div class="grid grid-3" style="margin-top: 32px;">
+    <div class="card">
+      <div class="label">Consumidor</div>
+      <div class="value">Analista BI</div>
+      <div class="footer">Operacoes, Comercial, Atendimento</div>
+    </div>
+    <div class="card">
+      <div class="label">Necessidade</div>
+      <div class="value">5 perguntas</div>
+      <div class="footer">Receita, gargalos, perdas, regiao, canal</div>
+    </div>
+    <div class="card">
+      <div class="label">Restricao</div>
+      <div class="value">Free Edition</div>
+      <div class="footer">Sem DLT, RBAC granular, Workflows</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="badge">03 / 12 Fontes</div>
+  <h2>9 fontes em 5 formatos</h2>
+  <table>
+    <tr><th>Origem</th><th>Formato</th><th>Volume</th><th>Dominio</th></tr>
+    <tr><td>erp_pedidos_cabecalho.csv</td><td>CSV ; com decimal BR</td><td>403</td><td>Comercial</td></tr>
+    <tr><td>erp_pedidos_itens.csv</td><td>CSV , </td><td>995</td><td>Comercial</td></tr>
+    <tr><td>cadastro_produtos_api_dump.json</td><td>JSON aninhado</td><td>72</td><td>Comercial</td></tr>
+    <tr><td>crm_clientes_export.xlsx</td><td>XLSX</td><td>183 (180 dedup)</td><td>Comercial PII</td></tr>
+    <tr><td>comercial_canais.xlsx</td><td>XLSX</td><td>8 (7 dedup)</td><td>Comercial</td></tr>
+    <tr><td>vendedores.csv</td><td>CSV ;</td><td>42 (40 dedup)</td><td>Comercial</td></tr>
+    <tr><td>legado_regioes_pipe.txt</td><td>Pipe-delimited</td><td>8 (6 dedup)</td><td>Transversal</td></tr>
+    <tr><td>logistica_entregas.json</td><td>JSON array aninhado</td><td>322 (325 silver)</td><td>Logistica</td></tr>
+    <tr><td>atendimento_ocorrencias.ndjson</td><td>NDJSON</td><td>270</td><td>Atendimento</td></tr>
+  </table>
+</section>
+
+<section class="slide">
+  <div class="badge">04 / 12 Arquitetura</div>
+  <h2>Medallion (ADR-003)</h2>
+  <pre>landing/ (UC Volume sources)
+   |
+   v
+bronze/ (string-typed - ADR-001)
+   |  9 tabelas, +metadata, +source_file
+   v
+silver/ (typed + dedup + DQ flags + quarantine - ADR-005)
+   |  9 tabelas, ANSI-safe casts, _dq_status, _dq_reasons
+   v
+gold/ (star schema dimensional - ADR-002)
+   |  6 dims SCD1 + 1 SCD2 + 4 facts + 1 view consolidada
+   v
+BI consumer (vw_kpi_business + dim_cliente_history range join)</pre>
+  <p class="muted">28 tabelas + 1 view. Schemas curtos sem prefixo de projeto (catalogo vivo limpo no Catalog Explorer UC).</p>
+</section>
+
+<section class="slide">
+  <div class="badge">05 / 12 Decisoes Tecnicas</div>
+  <h2>5 ADRs Nygard</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="label">ADR-001</div>
+      <h3>Bronze string-typed</h3>
+      <p class="small muted">Preserva qualquer formato original. Casts no Silver com try_cast ANSI-safe (Photon Spark 4.1 estrito).</p>
+    </div>
+    <div class="card">
+      <div class="label">ADR-002</div>
+      <h3>SCD1 padrao + SCD2 demonstrativa</h3>
+      <p class="small muted">dim_cliente_history paralela. Hash MD5 sobre 4 colunas (segmento, UF, cidade, status). MERGE pattern Delta.</p>
+    </div>
+    <div class="card">
+      <div class="label">ADR-003</div>
+      <h3>Medallion 3-camadas + landing</h3>
+      <p class="small muted">Schemas curtos (bronze/silver/gold/landing). Pattern canonico Databricks; queries mais limpas.</p>
+    </div>
+    <div class="card">
+      <div class="label">ADR-004</div>
+      <h3>Free Edition vs Premium</h3>
+      <p class="small muted">Limitacoes conscientes (sem DLT/Workflows/RBAC/audit_log). Roadmap explicito para producao.</p>
+    </div>
+    <div class="card" style="grid-column: 1 / -1;">
+      <div class="label">ADR-005</div>
+      <h3>DQ flags + Quarantine pattern</h3>
+      <p class="small muted">Equivalente arquitetural a DLT no Free Edition. <strong class="warn">Bug raiz descoberto durante uplift</strong>: <code>array_remove(arr, NULL)</code> retorna NULL (NULL=NULL eh NULL); fix: usar <code>array_compact()</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="badge">06 / 12 Pente Fino DQ</div>
+  <h2>Bug raiz descoberto e corrigido</h2>
+  <p>Auditoria forense via SDD identificou 2 bugs DQ em direcoes opostas, ambos com mesma causa raiz.</p>
+
+  <div class="grid grid-2" style="margin-top: 24px;">
+    <div class="card">
+      <h3 class="bad">Bug under-flag (silver_pedidos)</h3>
+      <pre>.otherwise(F.lit("warning"))  # rejected NUNCA
+</pre>
+      <p class="small">Antes: 0 rejected (artificial)</p>
+      <p class="small">Depois: 24 rejected (real)</p>
+    </div>
+    <div class="card">
+      <h3 class="bad">Bug over-flag (silver_ocorrencias)</h3>
+      <pre>F.lit(F.concat(...))  # forca non-null sempre
+</pre>
+      <p class="small">Antes: 270/270 rejected</p>
+      <p class="small">Depois: 8 rejected, 193 warning, 69 clean</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 24px; border-color: var(--good);">
+    <h3 class="good">Causa raiz (descoberta via investigacao SQL)</h3>
+    <pre>SELECT array_remove(array(NULL, NULL, 'real'), NULL)
+   -- retorna NULL (porque NULL = NULL eh NULL em SQL)
+SELECT array_compact(array(NULL, NULL, 'real'))
+   -- retorna ['real'] (correto)</pre>
+    <p class="small good">Fix: substituir <code>array_remove(arr, None)</code> por <code>array_compact(arr)</code> em todos os silvers.</p>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="badge">07 / 12 Modelagem</div>
+  <h2>Star schema com bus matrix Kimball</h2>
+  <table>
+    <tr><th>Dim / Fato</th><th>fact_pedido</th><th>fact_item</th><th>fact_entrega</th><th>fact_ocorrencia</th></tr>
+    <tr><td>dim_cliente</td><td>X</td><td>(via)</td><td>(via)</td><td>(via)</td></tr>
+    <tr><td>dim_cliente_history (SCD2)</td><td>X (range)</td><td>-</td><td>-</td><td>-</td></tr>
+    <tr><td>dim_produto</td><td>-</td><td>X</td><td>-</td><td>-</td></tr>
+    <tr><td>dim_canal</td><td>X</td><td>(via)</td><td>-</td><td>-</td></tr>
+    <tr><td>dim_vendedor</td><td>X</td><td>-</td><td>-</td><td>-</td></tr>
+    <tr><td>dim_regiao</td><td>(via vendedor)</td><td>-</td><td>X (destino)</td><td>-</td></tr>
+    <tr><td>dim_data (com feriados BR)</td><td>X</td><td>-</td><td>X</td><td>X</td></tr>
+  </table>
+  <p class="muted">Conformed dimensions: <code>dim_cliente</code>, <code>dim_canal</code>, <code>dim_data</code>. Degenerate dimensions: <code>payment_method</code>, <code>severity</code>.</p>
+</section>
+
+<section class="slide">
+  <div class="badge">08 / 12 Governanca UC</div>
+  <h2>Catalogo vivo</h2>
+  <p>Aplicado via <code>01_apply_governance.py</code> idempotente em <strong>28 tabelas</strong>:</p>
+  <div class="grid grid-4">
+    <div class="card">
+      <div class="label">REQ-001</div>
+      <div class="value">100%</div>
+      <div class="footer">Tabelas com COMMENT</div>
+    </div>
+    <div class="card">
+      <div class="label">REQ-002</div>
+      <div class="value">100%</div>
+      <div class="footer">Colunas business gold com COMMENT</div>
+    </div>
+    <div class="card">
+      <div class="label">REQ-003</div>
+      <div class="value">5 tags</div>
+      <div class="footer">Em todas as 28 tabelas</div>
+    </div>
+    <div class="card">
+      <div class="label">REQ-008</div>
+      <div class="value">Time travel</div>
+      <div class="footer">DESCRIBE HISTORY funcional</div>
+    </div>
+  </div>
+  <h3>5 tags fixas (vocabulario controlado)</h3>
+  <p>
+    <span class="pill">owner</span>
+    <span class="pill">layer</span>
+    <span class="pill">classification</span>
+    <span class="pill">pii</span>
+    <span class="pill">data_domain</span>
+  </p>
+  <p class="muted small">Idempotencia garantida: <code>DROP CONSTRAINT IF EXISTS</code> antes de <code>ADD CONSTRAINT</code>.</p>
+</section>
+
+<section class="slide">
+  <div class="badge">09 / 12 Reconciliacao</div>
+  <h2>Numeros que batem</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="label">Reconciliacao Bronze=Silver=Gold</div>
+      <div class="stat good">R$ 1.707.675,84</div>
+      <div class="footer">Mantido apos rename schemas + bug fixes (gate REQ-NF-002)</div>
+    </div>
+    <div class="card">
+      <div class="label">Wall-clock pipeline end-to-end</div>
+      <div class="stat">~6 min</div>
+      <div class="footer">Free Edition serverless, 13 tasks (REQ-NF-001 &lt; 30min)</div>
+    </div>
+  </div>
+  <h3>DQ distribution realista pos-fix</h3>
+  <table>
+    <tr><th>Tabela</th><th class="good">clean</th><th class="warn">warning</th><th class="bad">rejected</th></tr>
+    <tr><td>silver.pedidos_cabecalho</td><td>0</td><td>379</td><td>24</td></tr>
+    <tr><td>silver.ocorrencias</td><td>69</td><td>193</td><td>8</td></tr>
+    <tr><td>silver.entregas</td><td>(varia)</td><td>(varia)</td><td>(varia)</td></tr>
+  </table>
+</section>
+
+<section class="slide">
+  <div class="badge">10 / 12 Stack</div>
+  <h2>Stack tecnologico</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <h3>Plataforma</h3>
+      <p>Databricks Free Edition</p>
+      <p>Unity Catalog</p>
+      <p>Delta Lake 3.x</p>
+    </div>
+    <div class="card">
+      <h3>Engine</h3>
+      <p>Photon Spark 4.1</p>
+      <p>ANSI SQL mode estrito</p>
+      <p>PySpark 3.5+</p>
+    </div>
+    <div class="card">
+      <h3>Linguagem</h3>
+      <p>Python 3.10+</p>
+      <p>SQL (Spark dialect)</p>
+      <p>YAML (config)</p>
+    </div>
+    <div class="card">
+      <h3>Orquestracao</h3>
+      <p>Databricks Jobs</p>
+      <p>Multi-task DAG (13)</p>
+      <p>CLI v0.299.1</p>
+    </div>
+    <div class="card">
+      <h3>Qualidade</h3>
+      <p>pytest + chispa offline</p>
+      <p>15 testes Camada 1+2</p>
+      <p>black, ruff (pyproject.toml)</p>
+    </div>
+    <div class="card">
+      <h3>Versionamento</h3>
+      <p>Git + GitHub publico</p>
+      <p>5 ADRs Nygard PT-BR</p>
+      <p>Conventional commits</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="badge">11 / 12 Proximos passos</div>
+  <h2>Roadmap em Premium</h2>
+  <ul>
+    <li><strong>1.</strong> Migracao para Premium (DLT, Workflows agendados, RBAC granular, audit_log).</li>
+    <li><strong>2.</strong> CI/CD via Databricks Asset Bundles + GitHub Actions (deploy dev->stage->prod).</li>
+    <li><strong>3.</strong> Surrogate keys nas dims (eliminaria range join SCD2 atual).</li>
+    <li><strong>4.</strong> Particionamento dos fatos por <code>ano_mes</code> (relevante a 10M+ rows).</li>
+    <li><strong>5.</strong> CDC nas fontes transacionais (ingestao incremental real).</li>
+    <li><strong>6.</strong> Quarantine tables explicitas em todos os silvers (hoje stub).</li>
+    <li><strong>7.</strong> Refactor 8 silvers para usar <code>notebooks/utils/data_helpers.py</code> (testes pytest cobrem helpers).</li>
+    <li><strong>8.</strong> Logging estruturado + <code>pipeline_metrics</code> table populada (observability centralizada).</li>
+    <li><strong>9.</strong> Service principal como owner (vs email pessoal hoje).</li>
+    <li><strong>10.</strong> dbt + Atlan para data catalog auto-sincronizado.</li>
+  </ul>
+</section>
+
+<section class="slide hero">
+  <div class="badge">12 / 12 Autor</div>
+  <h1>Obrigado.</h1>
+  <p>Disponivel para entrevista tecnica e defesa oral.</p>
+  <div class="grid grid-2" style="margin-top: 32px;">
+    <div class="card">
+      <h3>Wilson Lucas da Cruz Pinto</h3>
+      <p class="muted">Engenheiro de Dados Senior - Brasilia, DF</p>
+      <p><a href="https://linkedin.com/in/wilson-lucas-719963b4" style="color: var(--accent);">linkedin.com/in/wilson-lucas-719963b4</a></p>
+      <p><a href="https://github.com/WilsonLucas" style="color: var(--accent);">github.com/WilsonLucas</a></p>
+    </div>
+    <div class="card">
+      <h3>Repositorio do case</h3>
+      <p><a href="https://github.com/WilsonLucas/case-data-engineer" style="color: var(--accent);">github.com/WilsonLucas/case-data-engineer</a></p>
+      <p class="muted small">Pipeline 100% verde + reconciliacao R$ 1.707.675,84 + 5 ADRs + suite pytest</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+</body>
+</html>

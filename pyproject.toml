@@ -1,0 +1,57 @@
+[project]
+name = "case-data-engineer-levva"
+version = "1.0.0"
+description = "Case tecnico Engenheiro de Dados Senior - Pipeline Medallion + Unity Catalog + Delta Lake"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0",
+    "ruff>=0.4.0",
+    "pytest>=8.0",
+]
+spark = [
+    "pyspark>=3.5.0",
+    "chispa>=0.10.0",
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+extend-exclude = '''
+/(
+    \.git
+  | __pycache__
+  | \.venv
+)/
+'''
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = ["__pycache__", ".git", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+]
+ignore = [
+    "E501",  # line too long (delegamos para black)
+    "F401",  # unused imports (notebooks Databricks tem padroes diferentes)
+    "F403",  # star imports (alguns notebooks legados)
+    "E402",  # module level import not at top of file (Databricks notebook cells)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/**" = ["F401", "F403", "E402"]
+"tests/**" = ["F401"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

@@ -1,19 +1,19 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Tabela: workspace.case_levva_silver.regioes
+# MAGIC # Tabela: workspace.silver.regioes
 # MAGIC ## Objetivo:
 # MAGIC Normalizar tabela legada de regiões (pipe-delimited) aplicando lookup canônico de códigos (S/Sul -> S, SE/Sudeste -> SE) para resolver duplicatas semânticas. Dedup por código mantendo o registro mais "vivo" (`active_flag=1`), correções de capitalização em `manager_name`, e cast de `active_flag` para boolean. Saída pronta para servir como `dim_regiao` no gold.
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `workspace.case_levva_bronze.regioes` | Cadastro legado de regiões (~9 linhas brutas, ingestadas de `legado_regioes_pipe.txt` com `\|` como separador) |
+# MAGIC | `workspace.bronze.regioes` | Cadastro legado de regiões (~9 linhas brutas, ingestadas de `legado_regioes_pipe.txt` com `\|` como separador) |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
 # MAGIC |------|------------------|-------------|
 # MAGIC | 2026-05-08 | Wilson Lucas | Criação do notebook |
-# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.case_levva_silver` |
+# MAGIC | 2026-05-10 | Wilson Lucas | Adapter UC: schema `workspace.silver` |
 
 # COMMAND ----------
 
@@ -21,13 +21,13 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
 
-SILVER_SCHEMA = "workspace.case_levva_silver"
+SILVER_SCHEMA = "workspace.silver"
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SILVER_SCHEMA}")
 
 # COMMAND ----------
 
 # Leitura do Bronze
-df_bronze = spark.table("workspace.case_levva_bronze.regioes")
+df_bronze = spark.table("workspace.bronze.regioes")
 print(f"[BRONZE] Linhas lidas: {df_bronze.count()}")
 df_bronze.show(20, truncate=False)
 
@@ -91,7 +91,7 @@ print(f"[DEDUP] Linhas antes: {df_normalized.count()} -> depois: {df_deduped.cou
 df_with_dq = (
     df_deduped.withColumn(
         "_dq_reasons",
-        F.array_remove(
+        F.array_compact(
             F.array(
                 F.when(F.col("regional_code") == "XX", F.lit("regional_code=XX (placeholder)")).otherwise(F.lit(None)),
                 F.when(F.col("active_flag").isNull(), F.lit("active_flag não pôde ser convertido")).otherwise(
@@ -101,8 +101,7 @@ df_with_dq = (
                     F.col("regional_code_raw") != F.col("regional_code"),
                     F.lit(F.concat(F.lit("regional_code normalizado de "), F.col("regional_code_raw"))),
                 ).otherwise(F.lit(None)),
-            ),
-            None,
+            )
         ),
     )
     .withColumn(
@@ -139,7 +138,7 @@ df_final = df_with_dq.select(
 )
 
 print(
-    f"\n[OK] workspace.case_levva_silver.regioes gravada. Total: {spark.table(f'{SILVER_SCHEMA}.regioes').count()} linhas."
+    f"\n[OK] workspace.silver.regioes gravada. Total: {spark.table(f'{SILVER_SCHEMA}.regioes').count()} linhas."
 )
 
 # Resumo DQ

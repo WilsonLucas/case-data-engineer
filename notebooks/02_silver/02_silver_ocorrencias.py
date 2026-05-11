@@ -1,13 +1,13 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Tabela: workspace.case_levva_silver.ocorrencias
+# MAGIC # Tabela: workspace.silver.ocorrencias
 # MAGIC ## Objetivo:
 # MAGIC Normalizar tickets de atendimento a partir do bronze. Parseia `created_at` em 5 formatos possíveis, padroniza enums (`event_type`, `severity`, `status`) com defaults para nulls, deriva `severity_score` numérico (HIGH=3, MEDIUM=2, LOW=1) para análises ranqueadas no gold. Saída pronta para servir como `fact_ocorrencia`.
 # MAGIC
 # MAGIC ## Fontes de Dados
 # MAGIC | Origem | Informação |
 # MAGIC |--------|-------------|
-# MAGIC | `workspace.case_levva_bronze.ocorrencias` | Tickets brutos (~269 linhas, ingestados de `atendimento_ocorrencias.ndjson`) |
+# MAGIC | `workspace.bronze.ocorrencias` | Tickets brutos (~269 linhas, ingestados de `atendimento_ocorrencias.ndjson`) |
 # MAGIC
 # MAGIC ## Histórico de alterações
 # MAGIC | Data | Desenvolvido por | Modificações |
@@ -20,7 +20,7 @@
 from pyspark.sql import functions as F
 from pyspark.sql.types import *
 
-SILVER_SCHEMA = "workspace.case_levva_silver"
+SILVER_SCHEMA = "workspace.silver"
 
 
 def parse_multi_format_timestamp(col):
@@ -35,7 +35,7 @@ def parse_multi_format_timestamp(col):
 
 # COMMAND ----------
 
-df_bronze = spark.table("workspace.case_levva_bronze.ocorrencias")
+df_bronze = spark.table("workspace.bronze.ocorrencias")
 print(f"[BRONZE] Linhas: {df_bronze.count()}")
 df_bronze.show(5, truncate=False)
 
@@ -80,7 +80,7 @@ df_normalized = df_normalized.withColumn(
 # 3. DQ flags
 df_with_dq = df_normalized.withColumn(
     "_dq_reasons",
-    F.array_remove(
+    F.array_compact(
         F.array(
             F.when(F.col("event_type") == "NAO_CLASSIFICADO", F.lit("event_type ausente")).otherwise(F.lit(None)),
             F.when(F.col("severity") == "MEDIUM", F.lit("severity ausente, default MEDIUM aplicado")).otherwise(
@@ -89,10 +89,9 @@ df_with_dq = df_normalized.withColumn(
             F.when(F.col("created_at").isNull(), F.lit("created_at inválido")).otherwise(F.lit(None)),
             F.when(
                 ~F.col("event_type").isin("REFUND", "TROCA", "DELAY", "COMPLAINT", "NAO_CLASSIFICADO"),
-                F.lit(F.concat(F.lit("event_type não canônico: "), F.col("event_type"))),
+                F.concat(F.lit("event_type não canônico: "), F.col("event_type")),
             ).otherwise(F.lit(None)),
-        ),
-        None,
+        )
     ),
 ).withColumn(
     "_dq_status",
@@ -126,7 +125,7 @@ df_final = df_with_dq.select(
 )
 
 print(
-    f"\n[OK] workspace.case_levva_silver.ocorrencias gravada. {spark.table(f'{SILVER_SCHEMA}.ocorrencias').count()} linhas."
+    f"\n[OK] workspace.silver.ocorrencias gravada. {spark.table(f'{SILVER_SCHEMA}.ocorrencias').count()} linhas."
 )
 spark.table(f"{SILVER_SCHEMA}.ocorrencias").groupBy("_dq_status").count().show()
 spark.table(f"{SILVER_SCHEMA}.ocorrencias").groupBy("event_type", "severity").count().orderBy(F.desc("count")).show()
