@@ -1,0 +1,78 @@
+{
+  "run_name": "case-levva-pipeline-end-to-end",
+  "tasks": [
+    {
+      "task_key": "bronze_ingest",
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/01_bronze/01_bronze_ingest"}
+    },
+    {
+      "task_key": "silver_pedidos",
+      "depends_on": [{"task_key": "bronze_ingest"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/02_silver/02_silver_pedidos"}
+    },
+    {
+      "task_key": "silver_produtos",
+      "depends_on": [{"task_key": "bronze_ingest"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/02_silver/02_silver_produtos"}
+    },
+    {
+      "task_key": "silver_clientes",
+      "depends_on": [{"task_key": "bronze_ingest"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/02_silver/02_silver_clientes"}
+    },
+    {
+      "task_key": "silver_canais",
+      "depends_on": [{"task_key": "bronze_ingest"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/02_silver/02_silver_canais"}
+    },
+    {
+      "task_key": "silver_regioes",
+      "depends_on": [{"task_key": "bronze_ingest"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/02_silver/02_silver_regioes"}
+    },
+    {
+      "task_key": "silver_vendedores",
+      "depends_on": [{"task_key": "bronze_ingest"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/02_silver/02_silver_vendedores"}
+    },
+    {
+      "task_key": "silver_entregas",
+      "depends_on": [{"task_key": "bronze_ingest"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/02_silver/02_silver_entregas"}
+    },
+    {
+      "task_key": "silver_ocorrencias",
+      "depends_on": [{"task_key": "bronze_ingest"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/02_silver/02_silver_ocorrencias"}
+    },
+    {
+      "task_key": "gold_dimensions",
+      "depends_on": [
+        {"task_key": "silver_pedidos"},
+        {"task_key": "silver_produtos"},
+        {"task_key": "silver_clientes"},
+        {"task_key": "silver_canais"},
+        {"task_key": "silver_regioes"},
+        {"task_key": "silver_vendedores"},
+        {"task_key": "silver_entregas"},
+        {"task_key": "silver_ocorrencias"}
+      ],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/03_gold/03_gold_dimensions"}
+    },
+    {
+      "task_key": "gold_facts",
+      "depends_on": [{"task_key": "gold_dimensions"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/03_gold/04_gold_facts"}
+    },
+    {
+      "task_key": "gold_kpis",
+      "depends_on": [{"task_key": "gold_facts"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/03_gold/05_gold_kpis"}
+    },
+    {
+      "task_key": "validation",
+      "depends_on": [{"task_key": "gold_kpis"}],
+      "notebook_task": {"notebook_path": "/Users/wilsonlucas201@gmail.com/case_levva/00_setup/99_validation"}
+    }
+  ]
+}

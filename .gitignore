@@ -1,0 +1,48 @@
+# Databricks
+.databricks/
+*.dbc
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.env
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Notebooks (Jupyter)
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Data - do NOT commit raw sources (vivem em UC Volume, fora do repo)
+sources/
+**/sources/*
+
+# Permitir explicitamente arquivos de configuracao no root
+!pipeline_dag.json
+
+# Logs
+*.log
+logs/
